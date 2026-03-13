@@ -83,8 +83,8 @@
 #'
 #' @export
 apply_estimation_error <- function(state,
-                                   error_model,
-                                   error_param) {
+                                   error_model = "bespoke_increasing_sd",
+                                   error_param = c(0.1375, 2, 60, 25)) {
 
   # ---------------------------------------------------------------------------
   # Input validation
