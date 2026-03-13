@@ -1,6 +1,6 @@
 # Finalize the cohort into a cemetery
 
-Ages remaining survivors one final step and removes the dead column.
+Ages remaining survivors one final step and marks all as dead.
 
 ## Usage
 
@@ -20,4 +20,4 @@ finalize_cemetery(cohort, k)
 
 ## Value
 
-Data frame without the dead column
+Data frame with all agents marked dead

@@ -15,6 +15,7 @@
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/apply_mortality_usher3.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/apply_mortality_v1.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/apply_preservation.html</loc></url>
+<url><loc>https://amy-s-anderson.github.io/persephone/reference/baseline_death_prob.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/compute_siler_risk.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/create_assemblage_distribution.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/create_cohort.html</loc></url>
@@ -23,7 +24,9 @@
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/generate_output_directory.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/get_default_params.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/index.html</loc></url>
+<url><loc>https://amy-s-anderson.github.io/persephone/reference/lesion_death_prob.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/lesions_to_percents.html</loc></url>
+<url><loc>https://amy-s-anderson.github.io/persephone/reference/make_discrete_death_distribution.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/persephone-package.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/plot_survival_curves.html</loc></url>
 <url><loc>https://amy-s-anderson.github.io/persephone/reference/read_model_sweep.html</loc></url>

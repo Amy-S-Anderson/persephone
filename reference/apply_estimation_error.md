@@ -8,7 +8,11 @@ underestimation of older individuals.
 ## Usage
 
 ``` r
-apply_estimation_error(state, error_model, error_param)
+apply_estimation_error(
+  state,
+  error_model = "bespoke_increasing_sd",
+  error_param = c(0.1375, 2, 60, 25)
+)
 ```
 
 ## Arguments

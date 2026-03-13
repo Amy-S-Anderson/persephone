@@ -21,14 +21,21 @@
   : Apply Mortality to Agent Population
 - [`apply_preservation()`](https://amy-s-anderson.github.io/persephone/reference/apply_preservation.md)
   : Apply Preservation Filtering to Agent Population
+- [`baseline_death_prob()`](https://amy-s-anderson.github.io/persephone/reference/baseline_death_prob.md)
+  : Compute baseline Siler death probability
 - [`create_assemblage_distribution()`](https://amy-s-anderson.github.io/persephone/reference/create_assemblage_distribution.md)
   : Create Empirical Distribution from Assemblage Data
 - [`generate_output_directory()`](https://amy-s-anderson.github.io/persephone/reference/generate_output_directory.md)
   : Generate output directory path from parameters
 - [`get_default_params()`](https://amy-s-anderson.github.io/persephone/reference/get_default_params.md)
   : Get default simulation parameters
+- [`lesion_death_prob()`](https://amy-s-anderson.github.io/persephone/reference/lesion_death_prob.md)
+  : Compute lesion-modified Siler death probability
 - [`lesions_to_percents()`](https://amy-s-anderson.github.io/persephone/reference/lesions_to_percents.md)
   : Calculate lesion prevalence by age interval
+- [`make_discrete_death_distribution()`](https://amy-s-anderson.github.io/persephone/reference/make_discrete_death_distribution.md)
+  : Compute discrete age-at-death distribution from a probability
+  function
 - [`persephone`](https://amy-s-anderson.github.io/persephone/reference/persephone-package.md)
   [`persephone-package`](https://amy-s-anderson.github.io/persephone/reference/persephone-package.md)
   : persephone: Agent-Based Model for Simulating Skeletal Lesion
