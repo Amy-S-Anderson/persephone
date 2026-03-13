@@ -42,7 +42,7 @@ make_discrete_death_distribution <- function(prob_fun, age_max = 100) {
   dx <- S_start * qx
 
   data.frame(
-    Age = ages,
+    age = ages,
     qx = qx,
     px = px,
     S_start = S_start,
