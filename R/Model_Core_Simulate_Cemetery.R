@@ -55,7 +55,7 @@ form_lesion <- function(cohort, i, formation_window_opens, formation_window_clos
 }
 
 ### Helper: For a single agent, roll for death
-apply_mortality <- function(cohort, i, age_based_risk, mortality_risk_type, relative_mortality_risk) {
+apply_mortality_v1 <- function(cohort, i, age_based_risk, mortality_risk_type, relative_mortality_risk) {
   death_dice <- runif(1, 0, 1)
   cohort$dead[i] <- ifelse(cohort$lesion[i] == 0 & death_dice < age_based_risk, TRUE,
                            ifelse(cohort$lesion[i] == 1 & mortality_risk_type == "proportional" & death_dice < age_based_risk * relative_mortality_risk, TRUE,
@@ -80,7 +80,7 @@ finalize_cemetery <- function(cohort, k) {
   k <- k + 1
   Alive <- which(!cohort$dead)
   cohort$age[Alive] <- k
-  cohort %>% select(-"dead")
+  cohort %>% dplyr::select(-"dead")
 }
 
 
@@ -114,7 +114,7 @@ Simulate_Cemetery <- function(cohort_size, # starting population, a named object
     
     for(i in Alive){
       cohort <- form_lesion(cohort, i, formation_window_opens, formation_window_closes, lesion_formation_rate)
-      cohort <- apply_mortality(cohort, i, age_based_risk, mortality_risk_type, relative_mortality_risk)
+      cohort <- apply_mortality_v1(cohort, i, age_based_risk, mortality_risk_type, relative_mortality_risk)
     }
 
     # Update summary table for Survivors
@@ -130,14 +130,3 @@ Simulate_Cemetery <- function(cohort_size, # starting population, a named object
   return(output)
 }
 
-
-
-
-
-
-test <- Simulate_Cemetery(cohort_size = 500,
-                                 lesion_formation_rate = .10,
-                                 formation_window_closes = 5,
-                                 mortality_regime = CoaleDemenyWestF5,
-                                 mortality_risk_type = "proportional"
-                                 )

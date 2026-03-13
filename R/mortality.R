@@ -76,7 +76,7 @@
 #' mortality_param <- c(1.2, b_siler)  # k2 = 1.2
 #'
 #' # Apply one year of mortality
-#' result <- apply_mortality(
+#' result <- apply_mortality_usher3(
 #'   state = state,
 #'   mortality_model = "usher3",
 #'   mortality_param = mortality_param,
@@ -86,7 +86,7 @@
 #' @seealso \code{\link[demohaz]{hsiler}} for the Siler hazard function.
 #'
 #' @export
-apply_mortality <- function(state,
+apply_mortality_usher3 <- function(state,
                             mortality_model,
                             mortality_param,
                             dx) {

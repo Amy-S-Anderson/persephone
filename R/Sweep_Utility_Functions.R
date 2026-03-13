@@ -1,13 +1,4 @@
 
-
-library(jsonlite)
-library(data.table)
-library(dplyr)
-library(survival)
-library(foreach)
-library(doParallel)
-
-
 # -------------------------
 # Function to create a list of the default parameters that are (likely) to remain stable across model runs.
 # -------------------------
@@ -23,10 +14,6 @@ get_default_params = function() {
   params["relative_mortality_risk"] = 1
   return(params)
 }
-
-
-
-params = get_default_params()
 
 # -------------------------
 # Function to generate root output directory name of folder in which to store data produced from a single set of model parameter values.
