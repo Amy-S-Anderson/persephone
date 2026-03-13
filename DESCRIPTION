@@ -1,0 +1,15 @@
+Package: persephone
+Title: Agent-Based Model for Simulating Skeletal Lesion Formation and Mortality in Archaeological Populations
+Version: 0.0.0.9000
+Authors@R: 
+    person("Amy", "Anderson", , "first.last@example.com", role = c("aut", "cre"))
+Description: What the package does (one paragraph).
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: 
+    testthat,
+    demohaz (>= 0.1.1)
+Remotes:  
+    MichaelHoltonPrice/demohaz
