@@ -529,11 +529,11 @@ ggsave(filename = paste0(here("Known Unknowns", "Figures"), "/Figure_S8.pdf"),
 
 life_expectancies <- sweep_data %>%
   filter(rmr == 1) %>%
-  mutate(adult = if_else(Age > 15, 1, 0)) %>%
+  mutate(adult = if_else(age > 15, 1, 0)) %>%
   group_by(mortality) %>%
-  summarise(life_expectancy_at_birth = round(mean(Age), 1),
-            juvenile_mortality = round(sum(Age < 15) / n() * 100, 1),
-            adult_life_expectancy = round(mean(Age[adult == 1]))) 
+  summarise(life_expectancy_at_birth = round(mean(age), 1),
+            juvenile_mortality = round(sum(age < 15) / n() * 100, 1),
+            adult_life_expectancy = round(mean(age[adult == 1]))) 
 
 names(life_expectancies) <- c("Mortality regime", "Life expectancy at birth", "Juvenile mortality (%)", "Mean adult age at death")
 

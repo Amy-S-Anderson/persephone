@@ -45,7 +45,7 @@ Simulate_Cemetery <- function(cohort_size, # starting population, a named object
                           Lesion_perc = numeric())
   
   # As long as more than 10 people are alive
-  while(sum(cohort$Dead == "No") >= 10){
+  while(sum(!cohort$dead) >= 10){
     k <- k + 1  # Increment time
     Alive <- which(cohort$Dead == "No")
     cohort$Age[Alive] <- k  
@@ -83,9 +83,9 @@ Simulate_Cemetery <- function(cohort_size, # starting population, a named object
   
   # Once 10 or fewer people are left alive
   k <- k + 1  # Increment time
-  Alive <- which(cohort$Dead == "No")
-  cohort$Age[Alive] <- k  
-  cohort <- cohort %>% select(-"Dead") # They all enter the cemetery
+  Alive <- which(!cohort$dead)
+  cohort$age[Alive] <- k
+  cohort <- cohort %>% select(-"dead") # They all enter the cemetery
   
   
   # Model output: data frame of all individuals with lesion status and age at death; Frequency table of Cemetery ages and lesion counts; Frequency table of Survivors at each age, and their lesion counts.
