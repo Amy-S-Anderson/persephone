@@ -8,6 +8,16 @@
 # it uses parallel processing for a faster run time, since it is designed to run survival analysis on a huge number of data sets.
 # -------------------------
 
+#' Run survival analysis on sweep results
+#'
+#' Fits Kaplan-Meier curves and log-rank tests comparing survival between
+#' individuals with and without lesions, for each combination of mortality
+#' regime, lesion formation rate, and replicate.
+#'
+#' @param sweep_data Data frame of combined sweep results
+#' @param parallel Logical. Use parallel processing? Default TRUE.
+#' @param workers Number of parallel workers. Default: detectCores() - 1.
+#' @return A list with survival_data (for plotting) and logrank_results
 #' @importFrom foreach foreach %dopar%
 #' @export
 run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {

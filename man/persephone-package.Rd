@@ -6,9 +6,16 @@
 \alias{persephone-package}
 \title{persephone: Agent-Based Model for Simulating Skeletal Lesion Formation and Mortality in Archaeological Populations}
 \description{
-What the package does (one paragraph).
+An agent-based model (ABM) for simulating skeletal assemblage data in bioarchaeology. Individuals in a birth cohort face annual risks of skeletal lesion formation and age-specific mortality following a Siler hazard model. Lesion status can modify mortality risk, enabling exploration of the osteological paradox and evaluation of survival analysis methods applied to cemetery data.
 }
 \author{
-\strong{Maintainer}: Amy Anderson \email{first.last@example.com}
+\strong{Maintainer}: Amy Anderson \email{Amy.Anderson-1@colorado.edu}
+
+Other contributors:
+\itemize{
+  \item Michael Holton Price [contributor]
+  \item Nicolas Gauthier [contributor]
+  \item Bret Beheim [contributor]
+}
 
 }

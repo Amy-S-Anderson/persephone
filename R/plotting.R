@@ -14,8 +14,12 @@
 # Function to calculate percent of individuals at each age in the cemetery with skeletal lesions
 # -------------------------
 
+#' Calculate lesion prevalence by age interval
+#' @param cemetery_df Data frame of cemetery data with age and lesion columns
+#' @param group_vars Character vector of grouping variable names
+#' @return Data frame with Lesion_Percent by Age_Interval and groups
 #' @export
-lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes a data frame and a c() of named variables. 
+lesions_to_percents <- function(cemetery_df, group_vars) {
   
   # Define age interval labels and their midpoints
   age_lookup <- data.frame(
@@ -66,6 +70,10 @@ lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes
 # Make a line plot for this lesion_exposure parameter sweep:
 # -------------------------
 
+#' Line plot of lesion prevalence across sweep replicates
+#' @param plot_data Data frame from lesions_to_percents
+#' @param plot_color Color for the lines
+#' @return A ggplot object
 #' @export
 sweep_lineplot <- function(plot_data, plot_color){
   ggplot(data = plot_data, aes(x = interval_midpoint, y = Lesion_Percent)) +
@@ -99,6 +107,9 @@ sweep_lineplot <- function(plot_data, plot_color){
 # Plot AVERAGE OUTCOMES for each combination scenario of lesion exposure and mortality
 # -------------------------
 
+#' Line plot of average lesion prevalence by scenario
+#' @param plot_summary_data Summary data frame with mean outcomes
+#' @return A ggplot object
 #' @export
 scenario_lineplot <- function(plot_summary_data){
   ggplot(data = plot_summary_data, aes(x = Age_Interval, y = Lesion_Percent)) +
@@ -130,6 +141,9 @@ scenario_lineplot <- function(plot_summary_data){
 # Plot Survival curves for a single run of each parameter combination
 # -------------------------
 
+#' Plot survival curves by lesion status
+#' @param survival_data Data frame from run_survival_analysis
+#' @return A ggplot object
 #' @export
 plot_survival_curves <- function(survival_data){
   lesion_colors = c("black", '#b9c28d')
