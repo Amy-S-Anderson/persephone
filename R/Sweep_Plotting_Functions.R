@@ -14,6 +14,7 @@
 # Function to calculate percent of individuals at each age in the cemetery with skeletal lesions
 # -------------------------
 
+#' @export
 lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes a data frame and a c() of named variables. 
   
   # Define age interval labels and their midpoints
@@ -65,6 +66,7 @@ lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes
 # Make a line plot for this lesion_exposure parameter sweep:
 # -------------------------
 
+#' @export
 sweep_lineplot <- function(plot_data, plot_color){
   ggplot(data = plot_data, aes(x = interval_midpoint, y = Lesion_Percent)) +
     geom_line(aes(group = rep), color = plot_color, alpha = 0.05) +
@@ -97,6 +99,7 @@ sweep_lineplot <- function(plot_data, plot_color){
 # Plot AVERAGE OUTCOMES for each combination scenario of lesion exposure and mortality
 # -------------------------
 
+#' @export
 scenario_lineplot <- function(plot_summary_data){
   ggplot(data = plot_summary_data, aes(x = Age_Interval, y = Lesion_Percent)) +
     geom_line(aes( group = lesion_formation_rate,
@@ -127,6 +130,7 @@ scenario_lineplot <- function(plot_summary_data){
 # Plot Survival curves for a single run of each parameter combination
 # -------------------------
 
+#' @export
 plot_survival_curves <- function(survival_data){
   lesion_colors = c("black", '#b9c28d')
   plots <- ggplot(survival_data, aes(x = time, y = survival)) +

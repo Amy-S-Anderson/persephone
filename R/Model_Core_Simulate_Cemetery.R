@@ -22,7 +22,7 @@
 
 
 
-### Helper: Create the initial cohort data frame
+#' @export
 create_cohort <- function(cohort_size) {
   data.frame(agent_id = 1:cohort_size, # each person gets a unique ID
              age = 0,                   # newborns
@@ -31,21 +31,21 @@ create_cohort <- function(cohort_size) {
              in_sample = TRUE) # all agents start in the sample
 }
 
-### Helper: Age up all living agents to the current timestep
+#' @export
 age_cohort <- function(cohort, k) {
   Alive <- which(!cohort$dead)
   cohort$age[Alive] <- k
   cohort
 }
 
-### Helper: Compute Siler hazard for a given age
+#' @export
 compute_siler_risk <- function(k, mortality_regime) {
   mortality_regime$a1 * exp(-mortality_regime$b1 * k) +
     mortality_regime$a2 +
     mortality_regime$a3 * exp(mortality_regime$b3 * k)
 }
 
-### Helper: For a single agent, roll for lesion formation
+#' @export
 form_lesion <- function(cohort, i, formation_window_opens, formation_window_closes, lesion_formation_rate) {
   Stress <- runif(1, 0, 1)  # chance of being exposed to lesion-causing stressor
   cohort$lesion[i] <- ifelse(cohort$age[i] >= formation_window_opens &
@@ -54,7 +54,7 @@ form_lesion <- function(cohort, i, formation_window_opens, formation_window_clos
   cohort
 }
 
-### Helper: For a single agent, roll for death
+#' @export
 apply_mortality_v1 <- function(cohort, i, age_based_risk, mortality_risk_type, relative_mortality_risk) {
   death_dice <- runif(1, 0, 1)
   cohort$dead[i] <- ifelse(cohort$lesion[i] == 0 & death_dice < age_based_risk, TRUE,
@@ -65,7 +65,7 @@ apply_mortality_v1 <- function(cohort, i, age_based_risk, mortality_risk_type, r
   cohort
 }
 
-### Helper: Record survivor snapshot for the current timestep
+#' @export
 record_survivors <- function(cohort, k) {
   n_alive <- sum(!cohort$dead & cohort$age == k)
   n_lesion <- sum(!cohort$dead & cohort$lesion == 1 & cohort$age == k)
@@ -75,7 +75,7 @@ record_survivors <- function(cohort, k) {
              Lesion_perc = ifelse(n_alive == 0, NA, round(n_lesion / n_alive * 100, 1)))
 }
 
-### Helper: Finalize the cohort into a cemetery (age remaining survivors, drop dead column)
+#' @export
 finalize_cemetery <- function(cohort, k) {
   k <- k + 1
   Alive <- which(!cohort$dead)
@@ -84,8 +84,7 @@ finalize_cemetery <- function(cohort, k) {
 }
 
 
-### Function: Persephone ABM -- Formation of childhood skeletal lesions, with potential for lesion-related mortality
-
+#' @export
 Simulate_Cemetery <- function(cohort_size, # starting population, a named object created using the Generate.Cohort function
                                      lesion_formation_rate, # The annual probability of developing a lesion, A number between 0 and 1
                                      formation_window_opens = 0, # Age at which skeletal lesions can start forming
