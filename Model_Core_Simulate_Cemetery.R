@@ -22,6 +22,60 @@
 
 
 
+### Helper: Create the initial cohort data frame
+create_cohort <- function(cohort_size) {
+  data.frame(agent_id = 1:cohort_size, # each person gets a unique ID
+             age = 0,                   # newborns
+             lesion = 0,                # no one is born with lesions
+             dead = FALSE,
+             in_sample = TRUE) # all agents start in the sample
+}
+
+### Helper: Age up all living agents to the current timestep
+age_cohort <- function(cohort, k) {
+  Alive <- which(!cohort$dead)
+  cohort$age[Alive] <- k
+  cohort
+}
+
+### Helper: Compute Siler hazard for a given age
+compute_siler_risk <- function(k, mortality_regime) {
+  mortality_regime$a1 * exp(-mortality_regime$b1 * k) +
+    mortality_regime$a2 +
+    mortality_regime$a3 * exp(mortality_regime$b3 * k)
+}
+
+### Helper: For a single agent, roll for lesion formation
+form_lesion <- function(cohort, i, formation_window_opens, formation_window_closes, lesion_formation_rate) {
+  Stress <- runif(1, 0, 1)  # chance of being exposed to lesion-causing stressor
+  cohort$lesion[i] <- ifelse(cohort$age[i] >= formation_window_opens &
+                               cohort$age[i] <= formation_window_closes &
+                               Stress <= lesion_formation_rate, 1, cohort$lesion[i])
+  cohort
+}
+
+### Helper: For a single agent, roll for death
+apply_mortality <- function(cohort, i, age_based_risk, mortality_risk_type, relative_mortality_risk) {
+  death_dice <- runif(1, 0, 1)
+  cohort$dead[i] <- ifelse(cohort$lesion[i] == 0 & death_dice < age_based_risk, TRUE,
+                           ifelse(cohort$lesion[i] == 1 & mortality_risk_type == "proportional" & death_dice < age_based_risk * relative_mortality_risk, TRUE,
+                                  ifelse(cohort$lesion[i] == 1 & mortality_risk_type == "time_decreasing" & death_dice < age_based_risk * relative_mortality_risk / ((cohort$age[i] / 10) + relative_mortality_risk), TRUE,
+                                         ifelse(cohort$lesion[i] == 1 & mortality_risk_type == "time_increasing" & death_dice < age_based_risk * ((cohort$age[i] / 10) + relative_mortality_risk) / relative_mortality_risk, TRUE,
+                                                cohort$dead[i]))))
+  cohort
+}
+
+### Helper: Record survivor snapshot for the current timestep
+record_survivors <- function(cohort, k) {
+  n_alive <- sum(!cohort$dead & cohort$age == k)
+  n_lesion <- sum(!cohort$dead & cohort$lesion == 1 & cohort$age == k)
+  data.frame(Age = k,
+             Alive = n_alive,
+             Lesion = n_lesion,
+             Lesion_perc = ifelse(n_alive == 0, NA, round(n_lesion / n_alive * 100, 1)))
+}
+
+
 ### Function: Persephone ABM -- Formation of childhood skeletal lesions, with potential for lesion-related mortality
 
 Simulate_Cemetery <- function(cohort_size, # starting population, a named object created using the Generate.Cohort function
@@ -31,10 +85,7 @@ Simulate_Cemetery <- function(cohort_size, # starting population, a named object
                                      mortality_risk_type = "proportional", # One of the following: proportional, time-decreasing, time-increasing
                                      relative_mortality_risk = 1, # A number between 0 and Inf, but most likely between 1 and 5. Describes the risk of individuals with lesions, a multiplier of the risk experienced by individuals without lesions
                                      mortality_regime){ # A vector of Siler parameters based on/named for a population
-  cohort <- data.frame(agent_id = 1:cohort_size, # each person gets a unique ID
-                       Age = 0, # newborns
-                       Lesion = 0, # no one is born with lesions
-                       Dead = "No")
+  cohort <- create_cohort(cohort_size)
   
   k <- 0 # Initialize time counter
   
@@ -47,38 +98,19 @@ Simulate_Cemetery <- function(cohort_size, # starting population, a named object
   # As long as more than 10 people are alive
   while(sum(!cohort$dead) >= 10){
     k <- k + 1  # Increment time
-    Alive <- which(cohort$Dead == "No")
-    cohort$Age[Alive] <- k  
-    
+    cohort <- age_cohort(cohort, k)
+    Alive <- which(!cohort$dead)
+
     # calculate immediate mortality risk for individuals based on their current age
-    age_based_risk <- (mortality_regime$a1 * exp(-mortality_regime$b1 * k) + 
-                            mortality_regime$a2 + 
-                            mortality_regime$a3 * exp(mortality_regime$b3 * k))
+    age_based_risk <- compute_siler_risk(k, mortality_regime)
     
     for(i in Alive){
-      Stress <- runif(1, 0, 1)  # chance of being exposed to lesion-causing stressor
-      # New lesions form
-      cohort$Lesion[i] <- ifelse(cohort$Age[i] >= formation_window_opens & # if an individual is in the right age range 
-                                   cohort$Age[i] <= formation_window_closes & 
-                                   Stress <= lesion_formation_rate, 1, cohort$Lesion[i]) # and is exposed to lesion-causing forces.
-      
-      # Now, draw a random number between 0 and 1. (Pick a card, any card...)
-      death_dice <- runif(1, 0, 1)
-      
-      # Dead, without a lesion
-      cohort$Dead[i] <- ifelse(cohort$Lesion[i] == 0 & death_dice < age_based_risk, "Yes", 
-                               # Dead WITH a lesion
-                               ifelse(cohort$Lesion[i] == 1 & mortality_risk_type == "proportional" & death_dice < age_based_risk * relative_mortality_risk, "Yes", 
-                                      ifelse(cohort$Lesion[i] == 1 & mortality_risk_type == "time_decreasing" & death_dice < age_based_risk * relative_mortality_risk / ((cohort$Age[i] / 10) + relative_mortality_risk), "Yes", 
-                                             ifelse(cohort$Lesion[i] == 1 & mortality_risk_type == "time_increasing" & death_dice < age_based_risk * ((cohort$Age[i] / 10) + relative_mortality_risk) / relative_mortality_risk, "Yes", 
-                                                    cohort$Dead[i])))) #... or still alive
+      cohort <- form_lesion(cohort, i, formation_window_opens, formation_window_closes, lesion_formation_rate)
+      cohort <- apply_mortality(cohort, i, age_based_risk, mortality_risk_type, relative_mortality_risk)
     }
-    
-        # Update summary table for Survivors
-    Alive_sum <- rbind(Alive_sum, data.frame(Age = k,
-                                             Alive = sum(cohort$Dead == "No" & cohort$Age == k),
-                                             Lesion = sum(cohort$Dead == "No" & cohort$Lesion == 1 & cohort$Age == k),
-                                             Lesion_perc = ifelse(sum(cohort$Dead == "No" & cohort$Age == k) == 0, NA, round(sum(cohort$Dead == "No" & cohort$Lesion == 1 & cohort$Age == k) / sum(cohort$Dead == "No" & cohort$Age == k) * 100, 1))))
+
+    # Update summary table for Survivors
+    Alive_sum <- rbind(Alive_sum, record_survivors(cohort, k))
   }
   
   # Once 10 or fewer people are left alive
