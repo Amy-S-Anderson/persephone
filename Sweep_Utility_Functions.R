@@ -234,7 +234,7 @@ read_model_sweep <- function(root_output_directory, target_param, target_param_v
   
   # Define the expected columns for sim_cemetery.csv
   # 👉 Update this list if your schema changes
-  required_cols <- c("Age", "Lesion")
+  required_cols <- c("age", "lesion")
   
   for (param_value in target_param_values) {
     param_dir <- file.path(root_output_directory,
@@ -342,8 +342,8 @@ read_sweep <- function(mortality_regime, lesion_rates, reps, rmr) {
 # -------------------------
 
 run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
-  # Ensure Dead column exists
-  sweep_data$Dead <- 1
+  # Ensure dead column exists (event indicator for survival analysis — all are dead)
+  sweep_data$dead <- 1
   
   # Split data into groups once (avoids repeated filter calls in loop)
   grouped_data <- sweep_data %>%
@@ -364,13 +364,13 @@ run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
                        combo <- d[1, c("mortality", "lesion_formation_rate", "rep"), drop = FALSE]
                        
                        # Skip if columns are missing
-                       if (!all(c("Age", "Dead", "Lesion") %in% names(d))) {
+                       if (!all(c("age", "dead", "lesion") %in% names(d))) {
                          return(NULL)
                        }
-                       
+
                        # Survival object + model
-                       surv_obj <- Surv(time = d$Age, event = d$Dead)
-                       fit <- survfit(surv_obj ~ Lesion, data = d)
+                       surv_obj <- Surv(time = d$age, event = d$dead)
+                       fit <- survfit(surv_obj ~ lesion, data = d)
                        
                        surv_summary <- summary(fit)
                        
@@ -384,7 +384,7 @@ run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
                        )
                        
                        # Log-rank test
-                       logrank_test <- survdiff(surv_obj ~ Lesion, data = d)
+                       logrank_test <- survdiff(surv_obj ~ lesion, data = d)
                        p_value <- 1 - pchisq(logrank_test$chisq, df = length(logrank_test$n) - 1)
                        
                        list(

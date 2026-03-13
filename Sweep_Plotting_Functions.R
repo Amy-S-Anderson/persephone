@@ -32,22 +32,22 @@ lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes
   plot_prep_data <- cemetery_df %>%
     mutate(
       Age_Interval = factor(case_when(
-        Age < 2 ~ "0-1",
-        Age >= 2 & Age < 6 ~ "2-5",
-        Age >= 6 & Age < 10 ~ "6-9",
-        Age >= 10 & Age < 15 ~ "10-14",
-        Age >= 15 & Age < 20 ~ "15-19",
-        Age >= 20 & Age < 30 ~ "20-29",
-        Age >= 30 & Age < 40 ~ "30-39",
-        Age >= 40 & Age < 50 ~ "40-49",
-        Age >= 50 & Age < 60 ~ "50-59",
-        Age >= 60 ~ "60+"
+        age < 2 ~ "0-1",
+        age >= 2 & age < 6 ~ "2-5",
+        age >= 6 & age < 10 ~ "6-9",
+        age >= 10 & age < 15 ~ "10-14",
+        age >= 15 & age < 20 ~ "15-19",
+        age >= 20 & age < 30 ~ "20-29",
+        age >= 30 & age < 40 ~ "30-39",
+        age >= 40 & age < 50 ~ "40-49",
+        age >= 50 & age < 60 ~ "50-59",
+        age >= 60 ~ "60+"
       ), levels = levels(age_lookup$Age_Interval))
     ) %>%
     # Group by specified variables and Age_Interval
     group_by(across(all_of(c(group_vars, "Age_Interval")))) %>%
     summarise(
-      Lesion_Percent = sum(Lesion) / n() * 100,
+      Lesion_Percent = sum(lesion) / n() * 100,
       .groups = "drop"
     ) %>%
     # Join midpoints only where Age_Interval exists
