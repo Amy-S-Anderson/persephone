@@ -322,15 +322,15 @@ sim_data$mortality <- "CDW5"
 
 # All ages
 survival_data1 <- run_survival_analysis(
-  sim_data %>% filter(relative_risk == 1))
+  sim_data %>% filter(relative_risk == 1), parallel = FALSE)
 survival_data2 <- run_survival_analysis(
-  sim_data %>% filter(relative_risk == 2))
+  sim_data %>% filter(relative_risk == 2), parallel = FALSE)
 
 # Adults only (ages 10+)
 survival_adults1 <- run_survival_analysis(
-  sim_data %>% filter(relative_risk == 1, age >= 10))
+  sim_data %>% filter(relative_risk == 1, age >= 10), parallel = FALSE)
 survival_adults2 <- run_survival_analysis(
-  sim_data %>% filter(relative_risk == 2, age >= 10))
+  sim_data %>% filter(relative_risk == 2, age >= 10), parallel = FALSE)
 ```
 
 ## Figure 5: Survival Curves
