@@ -12,9 +12,9 @@ finalize_cemetery(cohort, k)
 \item{k}{Last completed timestep}
 }
 \value{
-Data frame without the dead column
+Data frame with all agents marked dead
 }
 \description{
-Ages remaining survivors one final step and removes the dead column.
+Ages remaining survivors one final step and marks all as dead.
 }
 \keyword{internal}

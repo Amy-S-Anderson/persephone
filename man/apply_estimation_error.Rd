@@ -4,7 +4,11 @@
 \alias{apply_estimation_error}
 \title{Apply Estimation Error to Agent Population}
 \usage{
-apply_estimation_error(state, error_model, error_param)
+apply_estimation_error(
+  state,
+  error_model = "bespoke_increasing_sd",
+  error_param = c(0.1375, 2, 60, 25)
+)
 }
 \arguments{
 \item{state}{A data.frame representing the current population state. Must
