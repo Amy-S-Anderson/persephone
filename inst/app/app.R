@@ -105,6 +105,39 @@ ui <- fluidPage(
       ),
       div(class = "help-text", "Age range in which new skeletal lesions can form."),
 
+      h4("Deposition Filters", class = "param-header"),
+      sliderInput(
+        "remove_children_below",
+        "Remove Children below age...",
+        min = 0,
+        max = 10,
+        value = 0,
+        step = 1
+      ),
+      sliderInput(
+        "remove_adults_older",
+        "Remove Adults older than age...",
+        min = 50,
+        max = 100,
+        value = 100,
+        step = 10
+      ),
+
+      h4("Taphonomic Filter", class = "param-header"),
+      selectInput(
+        "taphonomic_filter",
+        "Taphonomic strength",
+        choices = c("Weak", "Medium", "Strong"),
+        selected = "Medium"
+      ),
+
+      h4("Age Estimation Bias", class = "param-header"),
+      checkboxInput(
+        "age_bias_exists",
+        "Age Bias Exists",
+        value = FALSE
+      ),
+      
       h4("Simulation", class = "param-header"),
       numericInput("seed", "Random seed (blank = random)", NA, min = 1),
       actionButton("run", "Run Simulation", class = "btn-primary run-btn")
@@ -115,30 +148,42 @@ ui <- fluidPage(
       tabsetPanel(
         id = "tabs", type = "tabs",
 
-        # =====================================================================
-        # Tab: Cemetery
-        # =====================================================================
-        tabPanel("Cemetery",
+        tabPanel("Set-up",
           br(),
           fluidRow(
-            column(6, plotOutput("plot_cem_age", height = "400px")),
-            column(6, plotOutput("plot_cem_lesion", height = "400px"))
+            column(12, plotOutput("plot_siler_setup", height = "500px"))
           ),
-          hr(),
-          div(class = "summary-text", verbatimTextOutput("cem_summary"))
-        ),
-
-        # =====================================================================
-        # Tab: Living Population
-        # =====================================================================
-        tabPanel("Living Population",
-          br(),
           fluidRow(
-            column(6, plotOutput("plot_alive", height = "400px")),
-            column(6, plotOutput("plot_lesion_pct", height = "400px"))
+            column(12, plotOutput("plot_death_pmf", height = "400px"))
           )
         ),
 
+
+       tabPanel("True Population",
+          br(),
+
+          fluidRow(
+            column(12, plotOutput("plot_alive", height = "400px"))
+          ),
+
+          fluidRow(
+            column(12, plotOutput("plot_lesion_pct", height = "400px"))
+          ),
+
+          hr(),
+
+          fluidRow(
+            column(12, plotOutput("plot_cem_age", height = "400px"))
+          ),
+
+          fluidRow(
+            column(12, plotOutput("plot_cem_lesion", height = "400px"))
+          ),
+
+          hr(),
+          div(class = "summary-text", verbatimTextOutput("cem_summary"))
+        ),
+      
         # =====================================================================
         # Tab: Survival Analysis
         # =====================================================================
@@ -188,7 +233,6 @@ ui <- fluidPage(
   )
 )
 
-
 # =============================================================================
 # Server
 # =============================================================================
@@ -233,9 +277,9 @@ server <- function(input, output, session) {
     req(sim())
     sim()$individual_outcomes %>%
       mutate(
-        Age_Interval = assign_age_interval(age),
+        Age_Interval = assign_age_interval(Age),
         Lesion_Status = factor(
-          ifelse(lesion == 1, "Present", "Absent"),
+          ifelse(Lesion == 1, "Present", "Absent"),
           levels = c("Absent", "Present")
         )
       )
@@ -264,7 +308,7 @@ server <- function(input, output, session) {
     validate(need(sim(), ""))
     prev <- cemetery() %>%
       group_by(Age_Interval) %>%
-      summarise(Pct = sum(lesion) / n() * 100, n = n(), .groups = "drop")
+      summarise(Pct = sum(Lesion) / n() * 100, n = n(), .groups = "drop")
 
     ggplot(prev, aes(x = Age_Interval, y = Pct)) +
       geom_col(fill = col_lesion, alpha = 0.85, width = 0.8) +
@@ -282,14 +326,14 @@ server <- function(input, output, session) {
   output$cem_summary <- renderPrint({
     validate(need(sim(), ""))
     d <- sim()$individual_outcomes
-    with_les <- sum(d$lesion == 1)
+    with_les <- sum(d$Lesion == 1)
     cat(sprintf("Total individuals: %d\n", nrow(d)))
     cat(sprintf("With lesions: %d (%.1f%%)\n", with_les, with_les / nrow(d) * 100))
-    cat(sprintf("Mean age at death:  %.1f years (all)\n", mean(d$age)))
+    cat(sprintf("Mean age at death:  %.1f years (all)\n", mean(d$Age)))
     if (with_les > 0) {
-      cat(sprintf("                    %.1f years (with lesion)\n", mean(d$age[d$lesion == 1])))
+      cat(sprintf("                    %.1f years (with lesion)\n", mean(d$Age[d$Lesion == 1])))
     }
-    cat(sprintf("                    %.1f years (without lesion)\n", mean(d$age[d$lesion == 0])))
+    cat(sprintf("                    %.1f years (without lesion)\n", mean(d$Age[d$Lesion == 0])))
   })
 
   # =========================================================================
@@ -326,8 +370,8 @@ server <- function(input, output, session) {
 
   filtered <- reactive({
     req(sim())
-    d <- sim()$individual_outcomes %>% filter(age >= input$min_age)
-    d$dead <- 1
+    d <- sim()$individual_outcomes %>% filter(Age >= input$min_age)
+    d$Dead <- 1
     d
   })
 
@@ -335,10 +379,10 @@ server <- function(input, output, session) {
     validate(need(sim(), "Click 'Run Simulation' to begin."))
     d <- filtered()
     validate(need(nrow(d) > 10, "Too few individuals remain after filtering."))
-    validate(need(length(unique(d$lesion)) == 2,
+    validate(need(length(unique(d$Lesion)) == 2,
                   "All remaining individuals have the same lesion status."))
 
-    fit <- survfit(Surv(age, dead) ~ lesion, data = d)
+    fit <- survfit(Surv(Age, Dead) ~ Lesion, data = d)
     s <- summary(fit)
 
     surv_df <- data.frame(
@@ -372,9 +416,9 @@ server <- function(input, output, session) {
   output$logrank_text <- renderPrint({
     validate(need(sim(), ""))
     d <- filtered()
-    validate(need(length(unique(d$lesion)) == 2, "Need both groups for comparison."))
+    validate(need(length(unique(d$Lesion)) == 2, "Need both groups for comparison."))
 
-    test <- survdiff(Surv(age, dead) ~ lesion, data = d)
+    test <- survdiff(Surv(Age, Dead) ~ Lesion, data = d)
     p <- 1 - pchisq(test$chisq, df = length(test$n) - 1)
 
     cat(sprintf("Chi-squared: %.2f\n", test$chisq))
@@ -386,10 +430,10 @@ server <- function(input, output, session) {
   output$interpretation <- renderUI({
     req(sim())
     d <- filtered()
-    if (length(unique(d$lesion)) < 2) return(NULL)
+    if (length(unique(d$Lesion)) < 2) return(NULL)
 
     test <- tryCatch(
-      survdiff(Surv(age, dead) ~ lesion, data = d),
+      survdiff(Surv(Age, Dead) ~ Lesion, data = d),
       error = function(e) NULL
     )
     if (is.null(test)) return(NULL)
@@ -467,8 +511,108 @@ server <- function(input, output, session) {
       write.csv(sim()$survivors, file, row.names = FALSE)
     }
   )
-}
 
+  # =========================================================================
+  # Set-up Tab
+  # =========================================================================
+
+  output$plot_siler_setup <- renderPlot({
+  regime <- mortality_regimes[[input$mortality_regime]]
+
+  age_max <- 100
+
+  siler_df <- data.frame(
+    Age = 0:age_max
+  ) %>%
+    mutate(
+      Juvenile = regime$a1 * exp(-regime$b1 * Age),
+      Background = regime$a2,
+      Senescent = regime$a3 * exp(regime$b3 * Age),
+      Total = Juvenile + Background + Senescent
+    )
+
+  siler_df <- siler_df %>%
+    mutate(
+      Lesion_Modified = case_when(
+        input$risk_type == "proportional" ~
+          Total * input$rmr,
+
+        input$risk_type == "time_decreasing" ~
+          Total * input$rmr / ((Age / 10) + input$rmr),
+
+        input$risk_type == "time_increasing" ~
+          Total * ((Age / 10) + input$rmr) / input$rmr
+      )
+    )
+
+  ggplot(siler_df, aes(x = Age)) +
+    geom_line(aes(y = Total, color = "Baseline hazard"), linewidth = 1.2) +
+    geom_line(aes(y = Lesion_Modified, color = "Lesion-modified hazard"), linewidth = 1.2) +
+    scale_color_manual(
+      values = c(
+        "Baseline hazard" = col_dark,
+        "Lesion-modified hazard" = col_lesion
+      )
+    ) +
+    labs(
+      title = paste0("Mortality Hazards: ", input$mortality_regime),
+      x = "Age (years)",
+      y = "Annual mortality hazard",
+      color = NULL
+    ) +
+    theme_bw(base_size = 13) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "bottom"
+    )
+  })
+
+  output$plot_death_pmf <- renderPlot({
+  regime <- mortality_regimes[[input$mortality_regime]]
+
+  d_base <- make_discrete_death_distribution(
+    prob_fun = function(age) {
+      baseline_death_prob(age, regime)
+    },
+    age_max = 100
+  ) %>%
+    mutate(Group = "Baseline")
+
+  d_lesion <- make_discrete_death_distribution(
+    prob_fun = function(age) {
+      lesion_death_prob(
+        age = age,
+        regime = regime,
+        risk_type = input$risk_type,
+        rmr = input$rmr
+      )
+    },
+    age_max = 100
+  ) %>%
+    mutate(Group = "Lesion-modified")
+
+  d_plot <- bind_rows(d_base, d_lesion)
+
+  ggplot(d_plot, aes(x = Age, y = dx, fill = Group)) +
+    geom_col(position = "identity", alpha = 0.45) +
+    scale_fill_manual(values = c(
+      "Baseline" = col_dark,
+      "Lesion-modified" = col_lesion
+    )) +
+    labs(
+      title = paste0("Discrete Age-at-Death Distribution: ", input$mortality_regime),
+      x = "Age (years)",
+      y = "Probability of death at age x",
+      fill = NULL
+    ) +
+    theme_bw(base_size = 13) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "bottom"
+    )
+  })
+
+}
 
 # =============================================================================
 # Launch
