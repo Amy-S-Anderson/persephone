@@ -75,6 +75,14 @@ record_survivors <- function(cohort, k) {
              Lesion_perc = ifelse(n_alive == 0, NA, round(n_lesion / n_alive * 100, 1)))
 }
 
+### Helper: Finalize the cohort into a cemetery (age remaining survivors, drop dead column)
+finalize_cemetery <- function(cohort, k) {
+  k <- k + 1
+  Alive <- which(!cohort$dead)
+  cohort$age[Alive] <- k
+  cohort %>% select(-"dead")
+}
+
 
 ### Function: Persephone ABM -- Formation of childhood skeletal lesions, with potential for lesion-related mortality
 
@@ -113,11 +121,8 @@ Simulate_Cemetery <- function(cohort_size, # starting population, a named object
     Alive_sum <- rbind(Alive_sum, record_survivors(cohort, k))
   }
   
-  # Once 10 or fewer people are left alive
-  k <- k + 1  # Increment time
-  Alive <- which(!cohort$dead)
-  cohort$age[Alive] <- k
-  cohort <- cohort %>% select(-"dead") # They all enter the cemetery
+  # Once 10 or fewer people are left alive — they all enter the cemetery
+  cohort <- finalize_cemetery(cohort, k)
   
   
   # Model output: data frame of all individuals with lesion status and age at death; Frequency table of Cemetery ages and lesion counts; Frequency table of Survivors at each age, and their lesion counts.
