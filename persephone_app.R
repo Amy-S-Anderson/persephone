@@ -201,6 +201,39 @@ ui <- fluidPage(
       ),
       div(class = "help-text", "Age range in which new skeletal lesions can form."),
 
+      h4("Deposition Filters", class = "param-header"),
+      sliderInput(
+        "remove_children_below",
+        "Remove Children below age...",
+        min = 0,
+        max = 10,
+        value = 0,
+        step = 1
+      ),
+      sliderInput(
+        "remove_adults_older",
+        "Remove Adults older than age...",
+        min = 50,
+        max = 100,
+        value = 100,
+        step = 10
+      ),
+
+      h4("Taphonomic Filter", class = "param-header"),
+      selectInput(
+        "taphonomic_filter",
+        "Taphonomic strength",
+        choices = c("Weak", "Medium", "Strong"),
+        selected = "Medium"
+      ),
+
+      h4("Age Estimation Bias", class = "param-header"),
+      checkboxInput(
+        "age_bias_exists",
+        "Age Bias Exists",
+        value = FALSE
+      ),
+      
       h4("Simulation", class = "param-header"),
       numericInput("seed", "Random seed (blank = random)", NA, min = 1),
       actionButton("run", "Run Simulation", class = "btn-primary run-btn")
@@ -215,6 +248,9 @@ ui <- fluidPage(
           br(),
           fluidRow(
             column(12, plotOutput("plot_siler_setup", height = "500px"))
+          ),
+          fluidRow(
+            column(12, plotOutput("plot_death_pmf", height = "400px"))
           )
         ),
 
@@ -292,6 +328,58 @@ ui <- fluidPage(
     )
   )
 )
+
+
+
+# helper functions for siler models
+
+baseline_death_prob <- function(age, regime) {
+  regime$a1 * exp(-regime$b1 * age) +
+    regime$a2 +
+    regime$a3 * exp(regime$b3 * age)
+}
+
+lesion_death_prob <- function(age, regime, risk_type, rmr) {
+  base <- baseline_death_prob(age, regime)
+
+  if (risk_type == "proportional") {
+    out <- base * rmr
+  } else if (risk_type == "time_decreasing") {
+    out <- base * rmr / ((age / 10) + rmr)
+  } else if (risk_type == "time_increasing") {
+    out <- base * ((age / 10) + rmr) / rmr
+  } else {
+    stop("Unknown risk_type")
+  }
+
+  out
+}
+
+make_discrete_death_distribution <- function(prob_fun, age_max = 100) {
+  ages <- 1:age_max
+  qx <- sapply(ages, prob_fun)
+
+  # enforce valid probabilities
+  qx <- pmin(pmax(qx, 0), 1)
+
+  px <- 1 - qx
+
+  # survival to start of each age
+  # S_start[1] = 1
+  S_start <- c(1, cumprod(px))[1:length(ages)]
+
+  # probability of death at each age
+  dx <- S_start * qx
+
+  data.frame(
+    Age = ages,
+    qx = qx,
+    px = px,
+    S_start = S_start,
+    dx = dx
+  )
+}
+
 
 
 # =============================================================================
@@ -578,36 +666,100 @@ server <- function(input, output, session) {
   # =========================================================================
 
   output$plot_siler_setup <- renderPlot({
-    regime <- mortality_regimes[[input$mortality_regime]]
+  regime <- mortality_regimes[[input$mortality_regime]]
 
-    age_max <- 100
+  age_max <- 100
 
-    siler_df <- data.frame(
-      Age = 0:age_max
+  siler_df <- data.frame(
+    Age = 0:age_max
+  ) %>%
+    mutate(
+      Juvenile = regime$a1 * exp(-regime$b1 * Age),
+      Background = regime$a2,
+      Senescent = regime$a3 * exp(regime$b3 * Age),
+      Total = Juvenile + Background + Senescent
     )
 
-    siler_df <- siler_df %>%
-      mutate(
-        Juvenile = regime$a1 * exp(-regime$b1 * Age),
-        Background = regime$a2,
-        Senescent = regime$a3 * exp(regime$b3 * Age),
-        Total = Juvenile + Background + Senescent
-      )
+  siler_df <- siler_df %>%
+    mutate(
+      Lesion_Modified = case_when(
+        input$risk_type == "proportional" ~
+          Total * input$rmr,
 
-    ggplot(siler_df, aes(x = Age, y = Total)) +
-      geom_line(linewidth = 1.2, color = col_dark) +
-      labs(
-        title = paste0("Siler Mortality Function: ", input$mortality_regime),
-        x = "Age (years)",
-        y = "Annual mortality hazard"
-      ) +
-      theme_bw(base_size = 13) +
-      theme(
-        plot.title = element_text(hjust = 0.5, face = "bold")
+        input$risk_type == "time_decreasing" ~
+          Total * input$rmr / ((Age / 10) + input$rmr),
+
+        input$risk_type == "time_increasing" ~
+          Total * ((Age / 10) + input$rmr) / input$rmr
       )
+    )
+
+  ggplot(siler_df, aes(x = Age)) +
+    geom_line(aes(y = Total, color = "Baseline hazard"), linewidth = 1.2) +
+    geom_line(aes(y = Lesion_Modified, color = "Lesion-modified hazard"), linewidth = 1.2) +
+    scale_color_manual(
+      values = c(
+        "Baseline hazard" = col_dark,
+        "Lesion-modified hazard" = col_lesion
+      )
+    ) +
+    labs(
+      title = paste0("Mortality Hazards: ", input$mortality_regime),
+      x = "Age (years)",
+      y = "Annual mortality hazard",
+      color = NULL
+    ) +
+    theme_bw(base_size = 13) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "bottom"
+    )
   })
 
+  output$plot_death_pmf <- renderPlot({
+  regime <- mortality_regimes[[input$mortality_regime]]
 
+  d_base <- make_discrete_death_distribution(
+    prob_fun = function(age) {
+      baseline_death_prob(age, regime)
+    },
+    age_max = 100
+  ) %>%
+    mutate(Group = "Baseline")
+
+  d_lesion <- make_discrete_death_distribution(
+    prob_fun = function(age) {
+      lesion_death_prob(
+        age = age,
+        regime = regime,
+        risk_type = input$risk_type,
+        rmr = input$rmr
+      )
+    },
+    age_max = 100
+  ) %>%
+    mutate(Group = "Lesion-modified")
+
+  d_plot <- bind_rows(d_base, d_lesion)
+
+  ggplot(d_plot, aes(x = Age, y = dx, fill = Group)) +
+    geom_col(position = "identity", alpha = 0.45) +
+    scale_fill_manual(values = c(
+      "Baseline" = col_dark,
+      "Lesion-modified" = col_lesion
+    )) +
+    labs(
+      title = paste0("Discrete Age-at-Death Distribution: ", input$mortality_regime),
+      x = "Age (years)",
+      y = "Probability of death at age x",
+      fill = NULL
+    ) +
+    theme_bw(base_size = 13) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "bottom"
+    )
+  })
 
 }
 
