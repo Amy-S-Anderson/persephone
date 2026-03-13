@@ -5,120 +5,24 @@
 # =============================================================================
 
 library(shiny)
+library(persephone)
 library(ggplot2)
 library(dplyr)
 library(survival)
 
 # =============================================================================
-# Mortality Regimes: Siler function parameters
-# Coale & Demeny West model life tables for females
+# Mortality Regimes: named list for UI dropdown
+# Data comes from persephone package
 # =============================================================================
 
 mortality_regimes <- list(
-  "CDW Level 3 (high mortality)" = data.frame(
-    a1 = 0.558, b1 = 1.05, a2 = 0.01225, a3 = 0.000520, b3 = 0.0727,
-    name = "CoaleDemenyWestF3"
-  ),
-  "CDW Level 5" = data.frame(
-    a1 = 0.457, b1 = 1.07, a2 = 0.01037, a3 = 0.000359, b3 = 0.0763,
-    name = "CoaleDemenyWestF5"
-  ),
-  "CDW Level 11" = data.frame(
-    a1 = 0.256, b1 = 1.17, a2 = 0.00596, a3 = 0.000133, b3 = 0.086,
-    name = "CoaleDemenyWestF11"
-  ),
-  "CDW Level 15" = data.frame(
-    a1 = 0.175, b1 = 1.40, a2 = 0.00368, a3 = 0.000075, b3 = 0.0917,
-    name = "CoaleDemenyWestF15"
-  ),
-  "CDW Level 17" = data.frame(
-    a1 = 0.14, b1 = 1.57, a2 = 0.00265, a3 = 0.000056, b3 = 0.0949,
-    name = "CoaleDemenyWestF17"
-  ),
-  "CDW Level 21 (low mortality)" = data.frame(
-    a1 = 0.091, b1 = 2.78, a2 = 0.00092, a3 = 0.000025, b3 = 0.1033,
-    name = "CoaleDemenyWestF21"
-  )
+  "CDW Level 3 (high mortality)" = CoaleDemenyWestF3,
+  "CDW Level 5" = CoaleDemenyWestF5,
+  "CDW Level 11" = CoaleDemenyWestF11,
+  "CDW Level 15" = CoaleDemenyWestF15,
+  "CDW Level 17" = CoaleDemenyWestF17,
+  "CDW Level 21 (low mortality)" = CoaleDemenyWestF21
 )
-
-# =============================================================================
-# Core ABM: Simulate_Cemetery
-# From Model_Core_Simulate_Cemetery.R by Amy Anderson
-# =============================================================================
-
-Simulate_Cemetery <- function(cohort_size,
-                              lesion_formation_rate,
-                              formation_window_opens = 0,
-                              formation_window_closes,
-                              mortality_risk_type = "proportional",
-                              relative_mortality_risk = 1,
-                              mortality_regime) {
-  cohort <- data.frame(
-    agent_id = 1:cohort_size,
-    age = 0,
-    lesion = 0,
-    dead = FALSE
-  )
-
-  k <- 0
-  Alive_sum <- data.frame(
-    Age = integer(), Alive = integer(),
-    Lesion = integer(), Lesion_perc = numeric()
-  )
-
-  while (sum(!cohort$dead) >= 10) {
-    k <- k + 1
-    Alive <- which(!cohort$dead)
-    cohort$age[Alive] <- k
-
-    age_based_risk <- (mortality_regime$a1 * exp(-mortality_regime$b1 * k) +
-      mortality_regime$a2 +
-      mortality_regime$a3 * exp(mortality_regime$b3 * k))
-
-    for (i in Alive) {
-      Stress <- runif(1)
-      cohort$lesion[i] <- ifelse(
-        cohort$age[i] >= formation_window_opens &
-          cohort$age[i] <= formation_window_closes &
-          Stress <= lesion_formation_rate,
-        1, cohort$lesion[i]
-      )
-
-      death_dice <- runif(1)
-
-      cohort$dead[i] <- ifelse(
-        cohort$lesion[i] == 0 & death_dice < age_based_risk, TRUE,
-        ifelse(cohort$lesion[i] == 1 &
-          mortality_risk_type == "proportional" &
-          death_dice < age_based_risk * relative_mortality_risk, TRUE,
-        ifelse(cohort$lesion[i] == 1 &
-          mortality_risk_type == "time_decreasing" &
-          death_dice < age_based_risk * relative_mortality_risk /
-            ((cohort$age[i] / 10) + relative_mortality_risk), TRUE,
-        ifelse(cohort$lesion[i] == 1 &
-          mortality_risk_type == "time_increasing" &
-          death_dice < age_based_risk *
-            ((cohort$age[i] / 10) + relative_mortality_risk) /
-            relative_mortality_risk, TRUE,
-        cohort$dead[i]))))
-    }
-
-    n_alive <- sum(!cohort$dead & cohort$age == k)
-    n_lesion <- sum(!cohort$dead & cohort$lesion == 1 & cohort$age == k)
-    Alive_sum <- rbind(Alive_sum, data.frame(
-      Age = k, Alive = n_alive, Lesion = n_lesion,
-      Lesion_perc = ifelse(n_alive == 0, NA,
-        round(n_lesion / n_alive * 100, 1))
-    ))
-  }
-
-  k <- k + 1
-  Alive <- which(!cohort$dead)
-  cohort$age[Alive] <- k
-  cohort <- cohort %>% select(-dead)
-
-  list(individual_outcomes = cohort, survivors = Alive_sum)
-}
 
 # =============================================================================
 # Helper: age intervals matching the paper
