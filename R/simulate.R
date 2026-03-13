@@ -21,6 +21,7 @@ create_cohort <- function(cohort_size) {
              age = 0,
              lesion = 0,
              dead = FALSE,
+             was_deposited = FALSE,
              in_sample = TRUE
              )
 }
@@ -97,16 +98,17 @@ record_survivors <- function(cohort, k) {
 
 #' Finalize the cohort into a cemetery
 #'
-#' Ages remaining survivors one final step and removes the dead column.
+#' Ages remaining survivors one final step and marks all as dead.
 #' @param cohort Population data frame
 #' @param k Last completed timestep
-#' @return Data frame without the dead column
+#' @return Data frame with all agents marked dead
 #' @keywords internal
 finalize_cemetery <- function(cohort, k) {
   k <- k + 1
   Alive <- which(!cohort$dead)
   cohort$age[Alive] <- k
-  cohort %>% dplyr::select(-"dead")
+  cohort$dead <- TRUE
+  cohort
 }
 
 
@@ -209,7 +211,10 @@ Simulate_Cemetery <- function(cohort_size,
   }
 
   # Apply Age Misestimation (if any)
-  if(age_noise) cohort <- add_age_noise(cohort)
+  if(age_noise) cohort <- apply_estimation_error(cohort, error_model =)
+
+  # Remove internal columns before returning
+  cohort <- cohort %>% dplyr::select(-"dead", -"was_deposited")
 
   # Model output
   output <- list(individual_outcomes = cohort, survivors = Alive_sum)
