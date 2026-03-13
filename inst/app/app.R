@@ -127,8 +127,8 @@ ui <- fluidPage(
       selectInput(
         "taphonomic_filter",
         "Taphonomic strength",
-        choices = c("Weak", "Medium", "Strong"),
-        selected = "Medium"
+        choices = c("none", "weak", "moderate", "strong"),
+        selected = "None"
       ),
 
       h4("Age Estimation Bias", class = "param-header"),
@@ -259,7 +259,10 @@ server <- function(input, output, session) {
         formation_window_closes = input$window_closes,
         mortality_risk_type = input$risk_type,
         relative_mortality_risk = input$rmr,
-        mortality_regime = mortality_regimes[[input$mortality_regime]]
+        mortality_regime = mortality_regimes[[input$mortality_regime]],
+        deposition_param = input$remove_children_below, # missing upper cutoff
+        loss_strength = input$taphonomic_filter,
+        age_noise = input$age_bias_exists
       )
       setProgress(1, message = "Done.")
     })
