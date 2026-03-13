@@ -8,6 +8,13 @@
 \description{
 An agent-based model (ABM) for simulating skeletal assemblage data in bioarchaeology. Individuals in a birth cohort face annual risks of skeletal lesion formation and age-specific mortality following a Siler hazard model. Lesion status can modify mortality risk, enabling exploration of the osteological paradox and evaluation of survival analysis methods applied to cemetery data.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://amy-s-anderson.github.io/persephone/}
+}
+
+}
 \author{
 \strong{Maintainer}: Amy Anderson \email{Amy.Anderson-1@colorado.edu}
 
