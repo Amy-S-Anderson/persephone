@@ -1,4 +1,4 @@
 library(testthat)
 
-test_check("mortalitymodule")
+test_check("persephone")
 
