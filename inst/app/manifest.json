@@ -5424,7 +5424,7 @@
       "checksum": "895f8ca3b723568477342f00e5755328"
     },
     "inst/app/app.R": {
-      "checksum": "207c44a742bac1641021267abdcd0f42"
+      "checksum": "ff653fb166eaa100c80d034abc69d077"
     },
     "LICENSE": {
       "checksum": "14ab819d2d6704f0e7b863cde9876cdf"
@@ -5442,7 +5442,7 @@
       "checksum": "62921ea70d53474433cde481831fa4a5"
     },
     "man/apply_estimation_error.Rd": {
-      "checksum": "870f07db6858fcea3e060e62d3126891"
+      "checksum": "710f42721c83737ea3f3f5fc4612c90c"
     },
     "man/apply_lesions.Rd": {
       "checksum": "f13f60b06302282f2d6fd16939e04c05"
@@ -5472,7 +5472,7 @@
       "checksum": "1191564629bcc447b38cedfe5587afa1"
     },
     "man/finalize_cemetery.Rd": {
-      "checksum": "79d92f719733b14241ab2378fd43d396"
+      "checksum": "96c0eca7889b45bc29c907de3eeab369"
     },
     "man/form_lesion.Rd": {
       "checksum": "af913f269b0820964c2b761bcaf95778"
