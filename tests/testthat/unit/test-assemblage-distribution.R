@@ -736,3 +736,62 @@ test_that("exact values with negative x_lo", {
   expect_equal(result$dfun(0), 0.1, tolerance = 1e-10)
   expect_equal(result$dfun(3), 0.2, tolerance = 1e-10)
 })
+
+test_that("exact values when interval spans multiple cuts", {
+  # Study A defines fine-grained intervals: [0,10), [10,20)
+  # Study B defines coarse interval: [0,20)
+  # The coarse interval should be split proportionally across the cuts
+  data <- data.frame(
+    study = c("A", "A", "B"),
+    x_lo = c(0, 10, 0),
+    x_hi = c(10, 20, 20),
+    count = c(10, 30, 60)
+  )
+  
+  result <- create_assemblage_distribution(data = data)
+  
+  # Cuts should be [0, 10, 20]
+  expect_equal(result$cuts, c(0, 10, 20))
+  
+  # Study A contributes: 10 to [0,10), 30 to [10,20)
+  # Study B's 60 spans [0,20) with width 20:
+  #   - [0,10) gets 60 * (10/20) = 30
+  #   - [10,20) gets 60 * (10/20) = 30
+  # Totals: [0,10) = 10 + 30 = 40, [10,20) = 30 + 30 = 60
+  # Total count = 100
+  # Proportions: 0.4, 0.6
+  # Densities: 0.4/10 = 0.04, 0.6/10 = 0.06
+  
+  expect_equal(result$densities[1], 0.04, tolerance = 1e-10)
+  expect_equal(result$densities[2], 0.06, tolerance = 1e-10)
+  
+  # dfun verification
+  expect_equal(result$dfun(5), 0.04, tolerance = 1e-10)
+  expect_equal(result$dfun(15), 0.06, tolerance = 1e-10)
+})
+
+test_that("exact values when interval spans cuts with unequal widths", {
+  # Cuts at [0, 5, 20] (widths 5 and 15)
+  # One interval [0, 20) with count 100 should distribute:
+  #   - [0,5) gets 100 * (5/20) = 25
+  #   - [5,20) gets 100 * (15/20) = 75
+  data <- data.frame(
+    study = c("A", "A", "B"),
+    x_lo = c(0, 5, 0),
+    x_hi = c(5, 20, 20),
+    count = c(0, 0, 100)
+  )
+  
+  result <- create_assemblage_distribution(data = data)
+  
+  # Cuts should be [0, 5, 20]
+  expect_equal(result$cuts, c(0, 5, 20))
+  
+  # Totals: [0,5) = 25, [5,20) = 75
+  # Proportions: 0.25, 0.75
+  # Densities: 0.25/5 = 0.05, 0.75/15 = 0.05
+  # Note: same density because proportional to width!
+  
+  expect_equal(result$densities[1], 0.05, tolerance = 1e-10)
+  expect_equal(result$densities[2], 0.05, tolerance = 1e-10)
+})
