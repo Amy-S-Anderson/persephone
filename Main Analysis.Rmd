@@ -1,0 +1,1106 @@
+---
+title: "Persephone: An Agent-Based Model for Bioarchaeology"
+author: "Amy Anderson"
+date: "2025-08-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r load libraries}
+
+#### Load libraries ####
+library(here) # for setting the working directory relative to the project file.
+
+# packages for data wrangling
+library(tidyverse)
+library(purrr) # for working with lists
+
+# packages for survival analysis
+library(survival)
+library(survminer)
+library(survRM2) # for calculating restricted mean survival time
+
+# packages for data visualization
+library(ggplot2)
+library(cowplot)
+
+# packages for handling model output
+library(jsonlite)
+library(data.table)
+
+```
+#### This script uses the Persphone agent-based model to simulate skeletal assemblage data and test the accuracy of survival analysis under specific assumptions about the data generating processes.   
+
+The resulting simulated data set includes individual ID, age at death, and skeletal lesion presence/absence.  
+
+The results of this script can also be viewed in the paper "Known unknowns and the osteological paradox: Why bioarchaeology needs agent-based models', by Amy Anderson and Sharon DeWitte.  
+
+
+
+The Persephone model is intended to power future tactical simulations for bioarchaeology. If any aspect of the code is unclear, the corresponding author encourages you to reach out.   
+  
+  
+**Note that the ABM contains functionality for more variables than are varied in the current paper** (e.g., proportional, time-decreasing, and time-increasing lesion-associated mortality risk; beginning and end of the lesion formation window).  
+This basic model was built with the intention that it would be extended for future experiments by the authors and other interested researchers. 
+  
+   
+   
+
+**Variables that can be varied in the model, as currently written, include:**  
+ * The youngest and oldest ages at which skeletal lesions can form (the opening and closing of the developmental window).  
+ 
+ * The nature of lesion-associated mortality risk (proportional, time-decreasing, or time-increasing).  
+ 
+ * The magnitude of lesion-associated mortality risk.  
+ 
+ * The population mortality schedule, as determined by parameter values in a chosen Siler function.  
+ 
+ * The number of individuals in the cohort.   
+ 
+   
+Other variables can easily be added to the existing code for future modeling experiments.  
+
+
+ 
+ 
+```{r The Agent-based Model}
+
+### Function: ABM -- Formation of childhood skeletal lesions, with potential for lesion-related mortality
+
+Simulate_Cemetery <- function(cohort_size, # starting population, a named object created using the Generate.Cohort function
+                                     lesion_formation_rate, # The annual probability of developing a lesion, A number between 0 and 1
+                                     formation_window_opens = 0, # Age at which skeletal lesions can start forming
+                                     formation_window_closes, # the oldest age at which a new lesion can form
+                                     mortality_risk_type = "proportional", # One of the following: proportional, time-decreasing, time-increasing
+                                     relative_mortality_risk = 1, # A number between 0 and Inf, but most likely between 1 and 5. Describes the risk of individuals with lesions, a multiplier of the risk experienced by individuals without lesions
+                                     mortality_regime){ # A vector of Siler parameters based on/named for a population
+  cohort <- data.frame(agent_id = 1:cohort_size, # each person gets a unique ID
+                       Age = 0, # newborns
+                       Lesion = 0, # no one is born with lesions
+                       Dead = "No")
+  
+  k <- 0 # Initialize time counter
+  
+  # set up tables for model output: survivor data
+  Alive_sum <- data.frame(Age = integer(),
+                          Alive = integer(),
+                          Lesion = integer(),
+                          Lesion_perc = numeric())
+  
+  # As long as more than 10 people are alive
+  while(sum(cohort$Dead == "No") >= 10){
+    k <- k + 1  # Increment time
+    Alive <- which(cohort$Dead == "No")
+    cohort$Age[Alive] <- k  
+    
+    # calculate immediate mortality risk for individuals based on their current age
+    age_based_risk <- (mortality_regime$a1 * exp(-mortality_regime$b1 * k) + 
+                            mortality_regime$a2 + 
+                            mortality_regime$a3 * exp(mortality_regime$b3 * k))
+    
+    for(i in Alive){
+      Stress <- runif(1, 0, 1)  # chance of being exposed to lesion-causing stressor
+      # New lesions form
+      cohort$Lesion[i] <- ifelse(cohort$Age[i] >= formation_window_opens & # if an individual is in the right age range 
+                                   cohort$Age[i] <= formation_window_closes & 
+                                   Stress <= lesion_formation_rate, 1, cohort$Lesion[i]) # and is exposed to lesion-causing forces.
+      
+      # Now, draw a random number between 0 and 1. (Pick a card, any card...)
+      death_dice <- runif(1, 0, 1)
+      
+      # Dead, without a lesion
+      cohort$Dead[i] <- ifelse(cohort$Lesion[i] == 0 & death_dice < age_based_risk, "Yes", 
+                               # Dead WITH a lesion
+                               ifelse(cohort$Lesion[i] == 1 & mortality_risk_type == "proportional" & death_dice < age_based_risk * relative_mortality_risk, "Yes", 
+                                      ifelse(cohort$Lesion[i] == 1 & mortality_risk_type == "time_decreasing" & death_dice < age_based_risk * relative_mortality_risk / ((cohort$Age[i] / 10) + relative_mortality_risk), "Yes", 
+                                             ifelse(cohort$Lesion[i] == 1 & mortality_risk_type == "time_increasing" & death_dice < age_based_risk * ((cohort$Age[i] / 10) + relative_mortality_risk) / relative_mortality_risk, "Yes", 
+                                                    cohort$Dead[i])))) #... or still alive
+    }
+    
+        # Update summary table for Survivors
+    Alive_sum <- rbind(Alive_sum, data.frame(Age = k,
+                                             Alive = sum(cohort$Dead == "No" & cohort$Age == k),
+                                             Lesion = sum(cohort$Dead == "No" & cohort$Lesion == 1 & cohort$Age == k),
+                                             Lesion_perc = ifelse(sum(cohort$Dead == "No" & cohort$Age == k) == 0, NA, round(sum(cohort$Dead == "No" & cohort$Lesion == 1 & cohort$Age == k) / sum(cohort$Dead == "No" & cohort$Age == k) * 100, 1))))
+  }
+  
+  # Once 10 or fewer people are left alive
+  k <- k + 1  # Increment time
+  Alive <- which(cohort$Dead == "No")
+  cohort$Age[Alive] <- k  
+  cohort <- cohort %>% select(-"Dead") # They all enter the cemetery
+  
+  
+  # Model output: data frame of all individuals with lesion status and age at death; Frequency table of Cemetery ages and lesion counts; Frequency table of Survivors at each age, and their lesion counts.
+  output <- list(individual_outcomes = cohort, survivors = Alive_sum)
+  return(output)
+}
+
+```
+
+  
+   
+   
+
+**In the model, all agents/individuals:**  
+* Are born as a starting cohort of a specified size.  
+
+* Face a stable annual risk of forming a skeletal lesion within a specified age range, outside of which ages they cannot form a new lesion or lose an existing lesion.  
+
+* Individuals with a skeletal lesion *may* experience a different age-specific risk of dying than individuals without skeletal lesions. When relative_mortality_risk = 1, then all individuals experience the same mortality risks, regardless of their skeletal lesion status.  
+
+* Age-specific mortality risks are determined by population-specific parameter values from a Siler function.  
+
+
+
+
+
+This data frame with Siler function values will be used for the "mortality_regime" parameter of the model.  
+
+```{r load mortality regime}
+
+#### A named Siler function. Parameter values from Coale & Demeny's West series of model life tables for females, Table 5 ####
+
+CoaleDemenyWestF5 <- data.frame(
+  a1= 0.457,
+  b1= 1.07,
+  a2= 0.01037, 
+  a3= 0.000359, 
+  b3= 0.0763,
+  name="CoaleDemenyWestF5") 
+
+```
+
+  
+  
+The functions below:
+1. Name the directory that will hold output from all runs of a model that use the same parameter values.  
+
+2. Designate and retrieve the parameter values to be used in this run of the model.  
+
+3. Execute a single run of the model, including:  
+   * Setting a random seed to ensure reproducibility.  
+   * Saving the value of the seed and the model parameter values in a 'parameters_used.json' file.  
+   * Saving simulated cemetery data (ID, age at death, and lesion presence/absence for all individuals) in a 'sim_cemetery.csv' file.  
+   * Saving annual data on age and lesion presence/absence for all individuals in the living cohort, in a 'sim_survivors.csv' file.  
+   
+4. Run the model multiple times using the same parameter values (but a different random seed) for each of the specified number of iterations.  
+  
+5. Systematically vary the value of a single parameter while holding all others constant, across many iterations of the model (Run a parameter sweep.). 
+
+The run_model_sweep() command wraps around the other functions defined in this code chunk. This is what will be used to execute and save multiple runs of multiple model scenarios with systematically varying parameter values. It is the workhorse function of the sensitivity analysis, but is not particularly necessary for the main analysis.   
+  
+6. Read the simulated data into the workspace from the files that were just written.  This function is useful for executing analyses and visualizing output in later work sessions, after running the model.  
+
+7. Reshape the data just read into the work space, changing it from nested lists to a single data frame.  
+
+ 
+
+```{r Functions to run and save multiple runs of the model}
+
+#### This chunk contains some functions to optimize model workflow so that the user can execute and systematically save a full sweep of specified parameter values. ####
+
+# Function to generate root output directory name of folder in which to store data produced from a single set of model parameter values. 
+generate_output_directory <- function(params) {
+  mortality_regime_number <- gregexpr("[0-9]+", params[["mortality_regime"]]$name)
+  mortality_regime_abbrev <- paste0("CDW", regmatches(params[["mortality_regime"]]$name, mortality_regime_number))
+  paste0(here::here("Known Unknowns", "Data for Main Analysis", 
+                  mortality_regime_abbrev))
+}
+
+# Function to create a list of the default parameters that are (likely) to remain stable across model runs. 
+# Each of these parameter values can be overwritten to vary model inputs, but these are the values used in the main text of the paper. 
+get_default_params = function() {
+  params = list()
+  params["cohort_size"] = 1000
+  params["lesion_formation_rate"] = 0.05
+  params["formation_window_opens"] = 0
+  params["formation_window_closes"] = 10
+  params[["mortality_regime"]] = CoaleDemenyWestF5
+  params["mortality_risk_type"] = "proportional"
+  params["relative_mortality_risk"] = 1
+  return(params)
+}
+
+
+#### Functions to run the model and save model parameters and simulated data ####
+
+### Run the model a single time, creating a named output directory and a generating and saving a random seed.
+# This function creates an 'output directory' folder and inside it, it saves
+# the random seed (.csv file)
+# the list of parameters used in the model (.json file)
+# the data frame of imaginary people and their language data generated by the model (.csv file)
+run_model_single = function(params, output_directory, seed = NA) {
+  
+  #Create a uniquely named output directory to store the output from this model run. 
+  if (dir.exists(output_directory)) {
+    print("Warning: output directory already exists! Skipping simulation to avoid overwriting data.")
+    return()
+  } else {
+    dir.create(output_directory, recursive=TRUE)
+  }
+  
+  #If no seed is set, set a unique random seed
+  if (is.na(seed)) {
+    seed = as.numeric(format(Sys.time(), "%OS6"))*1000000 #choose milliseconds of current time as seed
+  }
+  set.seed(seed)
+  # in the output directory for this model run, keep a record of the random seed used so that the exact output of this run can be replicated. 
+  write(seed, file = file.path(output_directory, "seed.csv"))
+  
+  
+  #Write input parameters to output_directory
+  write(toJSON(params, pretty=TRUE), file=file.path(output_directory, "params_used.json"))
+  
+  #Run model
+  output = do.call(Simulate_Cemetery, params)
+
+  #Write model output
+  write.csv(output$individual_outcomes, file=file.path(output_directory, "sim_cemetery.csv"), row.names=FALSE)
+  write.csv(output$survivors, file=file.path(output_directory, "sim_survivors.csv"), row.names=FALSE)
+  
+  
+  #For convenience, also return output here
+  return(output)
+}
+
+
+
+
+### Function to run and save a specified number of repeated model runs that use identical parameter values.
+
+# User designates the root output directory, parameter values, and the number of runs (numreps).
+# Each run will be saved in its own named folder, which will contain the files created by run_model_single() described above
+run_model_reps = function(params, root_output_directory, numreps=10) {
+  for (rep in 1:numreps) {
+    output_directory = file.path(root_output_directory, paste0("rep=", rep))
+    run_model_single(params, output_directory)
+  }
+}
+
+
+
+### Function to perform a systematic sweep across specified values of a single parameter, holding all other values constant.
+
+# This function wraps around the previous two functions. It produces a folder for each unique set of parameter values, 
+# named for the parameter being swept, and its value in this set of runs. Inside the folder is a folder for each run (rep), containing the value of the random seed, the .json file of parameter values, and the output of the model run. 
+
+#targetParam: the name of the parameter you want to sweep over
+#targetParamValues: the values you want to sweep over (list or vector)
+run_model_sweep = function(base_params, root_output_directory, target_param, target_param_values, numreps=10) {
+  for (iVal in 1:length(target_param_values)) {
+    # for each unique value of the target parameter, name the folder to hold all runs of the model that uses this parameter value. 
+    param_set_output_directory = file.path(root_output_directory, paste0(target_param, "=", target_param_values[iVal]))
+    params = copy(base_params)
+    # overwrite the default parameter value with the current value of the target parameter
+    params[target_param] = target_param_values[iVal]
+    
+    run_model_reps(params, param_set_output_directory, numreps=numreps)
+  }
+  
+  sweep_data = list()
+  sweep_data["target_param"] = target_param
+  sweep_data[["target_param_values"]] = target_param_values
+  write(toJSON(sweep_data, pretty=TRUE), file=file.path(root_output_directory, "sweep_data.json"))
+}
+
+
+
+
+
+### Function to read in the simulated data. This creates a nested list. 
+read_model_sweep = function(root_output_directory, target_param, target_param_values, data_file) { # data_file is either "sim_cemetery.csv" or "sim_survivors.csv"
+  sweep_results = list()
+  
+  # for each value in the parameter being swept
+  for (param_value in target_param_values) {
+    param_dir = file.path(root_output_directory, paste0(target_param,"=", param_value)) # identify the directory where the output for that scenario is stored
+    rep_dirs = list.dirs(param_dir, recursive = FALSE, full.names = TRUE) # identify the file paths for all the iterations/runs of that scenario
+    
+    # extract the output .csv file from each run
+    rep_outputs = lapply(rep_dirs, function(rep_dir) {
+      output_file = file.path(rep_dir, data_file) 
+      if (file.exists(output_file)) {
+        return(read_csv(output_file))
+      } else {
+        print("file does not exist")
+        return(NULL)
+      }
+    })
+    
+    # and save it as an entry in the sweep_results list, named with the target parameter value for this set of runs. 
+    sweep_results[[paste0(target_param,"=",param_value)]] = rep_outputs
+  }
+  
+  # return a list of lists: one for each value of the target parameter, containing a list of model output data frames from the output.csv files
+  return(sweep_results)
+}
+
+
+
+### Function to reshape data from lists to a single data frame, for easier plotting and analysis ###
+data_to_data_frame <- function(cemetery_data_list, target_param, target_param_values){
+  worlds <- data.frame()
+  for(scenario in seq_along(target_param_values)){
+    for(rep in seq_along(cemetery_data_list[[scenario]])){
+      cemetery_data_list[[scenario]][[rep]]$rep <- rep # Count the iterations
+    }
+    out <- do.call("rbind", cemetery_data_list[[scenario]]) # Compile the list of iterated runs into a single data frame
+    out[target_param] <- target_param_values[scenario]  # Add mortality regime name
+    worlds <- bind_rows(worlds, out)  # Combine all scenarios across the parameter sweep into a single data frame
+    worlds$mortality <- "Coale Demeny West F5"  # Add mortality regime name
+  }
+  return(worlds)
+}
+
+```
+
+
+  
+  **Run the model to simulate data for the main analysis** 
+  
+  * 100 runs of the model with each unique combination of parameter values.  
+  * Every parameter is held constant across model runs **except** for relative_mortality_risk.   
+        * This is either 1 (no difference in relative mortality risk when a lesion is present)   
+        * or 2 (mortality risk doubles when a lesion is present) 
+        
+  **This should result in simulated data on lesion status and age at death for 200,000 individuals.**. 
+  
+
+```{r Run the Model, warning=FALSE}
+
+# set default parameter values
+params = get_default_params()
+# run 100 iterations of the model with the null (risk-free lesions) scenario
+
+generate_output_directory(params)
+```
+  
+The simulated data for the first set of parameter values (relative mortality risk = 1) will be saved in this named folder.    
+
+
+```{r, results='hide'} 
+# (hide results because once the directory structure for the simulated data already exists, this function has a safety catch that produces hundreds of repeated warnings about skipping each directory name to avoid overwriting the data that are already in there.)
+# run the model with scenarios for risk-free lesions (relative_mortality_risk = 1) and risk-doubling lesions (relative_mortality_risk = 2)
+
+ run_model_sweep(params,
+               root_output_directory = generate_output_directory(params),
+               target_param = "relative_mortality_risk",
+               target_param_values = c(1, 2),
+               numreps = 100)
+
+```
+After running this chunk, the simulated data for each year of the living cohort and its resulting skeletal assemblage, the parameter values for each run of the model and the random seed should all be saved in a nested file structure stored in the directory that was named by the generate_output_directory() command, which organizes folders by the unique combination of parameter values.  
+  
+   
+   
+
+**We can now read the simulated data back into the workspace for analysis.** 
+
+```{r Load in the model output}
+##### Read in the simulated cemetery data from the newly made files generated by the run_model_sweep() command ####
+sim_data = read_model_sweep(
+  root_output_directory = generate_output_directory(params),
+  target_param = "relative_mortality_risk",
+  target_param_values = c(1, 2),
+  data_file = "sim_cemetery.csv" # specify the file with cemetery/mortality data
+  ) %>%
+  # reshape data from a nested list to a single data frame.
+  data_to_data_frame(target_param = "relative_mortality_risk", target_param_values = c(1,2)) %>%
+  mutate(scenario = if_else(relative_mortality_risk == 1, "Risk-free", "Risk-doubled"), # Add a column that denotes the modeling scenario, corresponding with the value for lesion-associated relative mortality risk. 
+  # Create age intervals (Archaeologically standard intervals for age at death estimated from skeletal features) matched to precise ages at death for simulated individuals.
+         Age_Interval = factor(case_when(
+    Age < 2 ~ "0-1",
+    Age >= 2 & Age < 6 ~ "2-5",
+    Age >= 6 & Age < 10 ~ "6-9",
+    Age >= 10 & Age < 15 ~ "10-14",
+    Age >= 15 & Age < 20 ~ "15-19",
+    Age >= 20 & Age < 30 ~ "20-29",
+    Age >= 30 & Age < 40 ~ "30-39",
+    Age >= 40 & Age < 50 ~ "40-49",
+    Age >= 50 & Age < 60 ~ "50-59",
+    Age >= 60 ~ "60+"
+  ), levels = c("0-1","2-5","6-9","10-14","15-19","20-29","30-39","40-49","50-59","60+")),
+  mortality = factor(mortality),
+  relative_mortality_risk = as.factor(relative_mortality_risk)) %>%
+  rename(relative_risk = relative_mortality_risk)# shortened the variable name for data visualization in this markdown file. 
+  
+```
+
+
+#### *Preview data from Scenario 1*
+```{r}
+# preview the first 20 rows of the resulting data frame.
+# (Omit the Age_Interval variable, to keep all columns on the same row for ease of reading)
+head(sim_data %>% select(-Age_Interval), n = 20L)
+
+```
+
+  
+#### *Preview data from Scenario 2*
+```{r}
+head(sim_data %>% filter(scenario == "Risk-doubled") %>% select(-Age_Interval), n = 20L) 
+```
+  
+    
+
+```{r}
+### Now read in the files from the recent model sweep that contain data on the surviving members of the cohort at each time step of the model run 
+sim_survivors = read_model_sweep(
+  root_output_directory = generate_output_directory(params),
+  target_param = "relative_mortality_risk",
+  target_param_values = c(1, 2),
+  data_file = "sim_survivors.csv" # specify the file with data on the living members of the cohort.
+  ) %>%
+  # reshape data from a nested list to a single data frame.
+  data_to_data_frame(target_param = "relative_mortality_risk", target_param_values = c(1,2)) %>%
+  mutate(scenario = if_else(relative_mortality_risk == 1, "Risk-free", "Risk-doubled"), # Add a column that denotes the modeling scenario, corresponding with the value for lesion-associated relative mortality risk. 
+  # Create age intervals (Archaeologically standard intervals for age at death estimated from skeletal features) matched to precise ages at death for simulated individuals.
+         Age_Interval = factor(case_when(
+    Age < 2 ~ "0-1",
+    Age >= 2 & Age < 6 ~ "2-5",
+    Age >= 6 & Age < 10 ~ "6-9",
+    Age >= 10 & Age < 15 ~ "10-14",
+    Age >= 15 & Age < 20 ~ "15-19",
+    Age >= 20 & Age < 30 ~ "20-29",
+    Age >= 30 & Age < 40 ~ "30-39",
+    Age >= 40 & Age < 50 ~ "40-49",
+    Age >= 50 & Age < 60 ~ "50-59",
+    Age >= 60 ~ "60+"
+  ), levels = c("0-1","2-5","6-9","10-14","15-19","20-29","30-39","40-49","50-59","60+")),
+  mortality = factor(mortality),
+  relative_mortality_risk = as.factor(relative_mortality_risk)) %>%
+  rename(relative_risk = relative_mortality_risk)# shortened the variable name for data visualization 
+
+
+# Preview survivor data
+head(sim_survivors %>% select(-Age_Interval))
+```
+
+  
+  
+  
+#### **Create Figure 3**  
+(Figures 1 and 2 are conceptual diagrams in the main text of the paper.)
+```{r, fig.dim = c(5, 7)}
+# set plot colors
+plot_colors <- c("black", "magenta")
+
+# ---------------------------
+# Define a consistent plotting theme for publication-ready figures
+# ---------------------------
+plot_theme <- theme_bw(base_size = 10) +   # smaller base font size
+  theme(
+    legend.position = "top",
+    legend.text = element_text(size = 8),
+    axis.text = element_text(size = 8),
+    axis.title = element_text(size = 9),
+    plot.title = element_text(size = 10, face = "bold"),
+    plot.subtitle = element_text(size = 9)
+  )
+
+
+
+# Function to calculate percent of individuals at each age in the cemetery with skeletal lesions
+lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes a data frame and a c() of named variables. 
+  
+  # Define age interval labels and their midpoints
+  age_lookup <- data.frame(
+    Age_Interval = factor(
+      c("0-1", "2-5", "6-9", "10-14", "15-19",
+        "20-29", "30-39", "40-49", "50-59", "60+"),
+      levels = c("0-1", "2-5", "6-9", "10-14", "15-19",
+                 "20-29", "30-39", "40-49", "50-59", "60+")
+    ),
+    interval_midpoint = c(0.5, 3.5, 7.5, 12.5, 17.5,
+                          25, 35, 45, 55, 75)
+  )
+  
+  # Create age intervals and recode mortality levels
+  plot_prep_data <- cemetery_df %>%
+    mutate(
+      Age_Interval = factor(case_when(
+        Age < 2 ~ "0-1",
+        Age >= 2 & Age < 6 ~ "2-5",
+        Age >= 6 & Age < 10 ~ "6-9",
+        Age >= 10 & Age < 15 ~ "10-14",
+        Age >= 15 & Age < 20 ~ "15-19",
+        Age >= 20 & Age < 30 ~ "20-29",
+        Age >= 30 & Age < 40 ~ "30-39",
+        Age >= 40 & Age < 50 ~ "40-49",
+        Age >= 50 & Age < 60 ~ "50-59",
+        Age >= 60 ~ "60+"
+      ), levels = levels(age_lookup$Age_Interval)),
+      mortality = factor(mortality, levels = c("CDW3", "CDW5", "CDW11", "CDW15", "CDW17", "CDW21")),
+      mortality = recode(mortality,
+                         "CDW3" = "CDW Level 3",
+                         "CDW5" = "CDW Level 5",
+                         "CDW11" = "CDW Level 11",
+                         "CDW15" = "CDW Level 15",
+                         "CDW17" = "CDW Level 17",
+                         "CDW21" = "CDW Level 21")
+    ) %>%
+    # Group by specified variables and Age_Interval
+    group_by(across(all_of(c(group_vars, "Age_Interval")))) %>%
+    summarise(
+      Lesion_Percent = sum(Lesion) / n() * 100,
+      .groups = "drop"
+    ) %>%
+    # Join midpoints only where Age_Interval exists
+    left_join(age_lookup, by = "Age_Interval")
+  
+  return(plot_prep_data)
+}
+
+
+
+#### Plot age-specific skeletal lesion prevalence in both scenarios ####
+# convert individual-level cemetery data to % of individuals with skeletal lesions in each age category
+plot_data <- lesions_to_percents(sim_data, group_vars = c("relative_risk", "Age_Interval", "rep"))
+plot_data_pooled <- lesions_to_percents(sim_data, group_vars = c("relative_risk", "Age_Interval")) 
+
+
+barplot_lesion_frequency_comparison <- ggplot(plot_data_pooled, aes(x = Age_Interval, y = Lesion_Percent)) +
+  geom_col(aes(group = relative_risk, fill = relative_risk), position = "dodge") +
+  scale_fill_manual(values = plot_colors) +
+  scale_y_continuous(limits = c(0,60), expand = c(0,0) ) +
+  labs(x = "Age at Death (years)", y = "% with Skeletal Lesion") +
+  plot_theme +
+  theme(legend.position = "none") +
+  ggtitle("Age Distributions of Skeletal Lesions in Cemeteries")
+
+#### Plot Age at death distributions in both scenarios ####
+# Bar plot (more familiar for archaeologists)
+barplot_sample_age_distributions <- sim_data %>%
+  group_by(relative_risk, Age_Interval) %>%
+  summarise(prop = n() / 100000, .groups = "keep") %>%
+ggplot(aes(x = Age_Interval, y = prop)) +
+  geom_col(aes(group = relative_risk, fill = relative_risk), position = "dodge") +
+  scale_fill_manual(values = plot_colors) +
+  scale_y_continuous(labels = scales::percent, limits = c(0,.3), expand = c(0,0) ) +
+  labs(x = "Age at Death (years)", y = "% of Cemetery", fill = "Lesion-associated Mortality Risk") +
+  plot_theme +
+  theme(legend.position = "bottom") +
+  ggtitle("Age-at-Death Distributions")
+
+legend <- get_legend(barplot_sample_age_distributions)
+
+barplot_sample_age_distributions <- barplot_sample_age_distributions + 
+  theme(legend.position = "none")
+
+barplots <- plot_grid(barplot_sample_age_distributions, barplot_lesion_frequency_comparison, 
+                      ncol = 1, labels = "AUTO")
+
+Figure_3 <- plot_grid(barplots, legend, ncol = 1, rel_heights = c(1, 0.05))
+
+
+# Save the plot as Figure 3
+# ggsave(filename = paste0(here("Known Unknowns", "Figures"), "/Figure_3.pdf"), 
+#   plot = Figure_3, 
+#   width = 140,
+#   units = "mm",
+#   dpi = 1200)
+
+# View Figure 3
+Figure_3
+```
+  
+  
+**Figure 3.** Pooled data for all simulated cemeteries. A) Age-at-Death distributions for pooled runs of the model with risk-free skeletal lesions (black) and risk-doubling skeletal lesions (pink). B) Distribution of lesion frequency across ages in pooled runs of risk-free and risk-doubling model scenarios. To better match plots from published bioarchaeological studies, age distributions are presented as bar plots with individuals binned into age categories used for age-at-death estimates in archaeological skeletal series. 
+  
+  
+  
+#### **Create Figure 4**   
+```{r, fig.dim = c(5, 7)}
+
+linetypes = c("dashed", "solid")
+
+# Add a label to living and dead individuals for plotting
+sim_survivors$Status <- "Alive"
+plot_data$Status <-"Dead"
+
+survivors_pooled <- sim_survivors %>%
+  group_by(Age, relative_risk) %>%
+  summarise(Lesion_Percent = mean(Lesion_perc), .groups = "keep")
+
+
+# Cemetery and survivors: Risk-free Lesions
+dead_and_alive_1 <- ggplot(plot_data %>% filter(relative_risk == 1),
+                                    aes(x = Age, y = Lesion_perc)) +
+  geom_line(aes(x = interval_midpoint, y = Lesion_Percent, 
+                      group = interaction(relative_risk, rep),
+                linetype = Status), , color = "black", alpha = 0.1) +
+  geom_line(data = plot_data_pooled %>% filter(relative_risk == 1)
+            , aes(x = interval_midpoint, y = Lesion_Percent,
+                                         group = relative_risk), color = "black", linewidth = 1.5) +
+  geom_line(data = sim_survivors %>% filter(relative_risk == 1), aes(group = interaction(relative_risk, rep), linetype = Status), color = "black", alpha = 0.1) +
+  geom_line(data = survivors_pooled %>% filter(relative_risk == 1)
+            , aes(x = Age, y = Lesion_Percent,
+                                         group = relative_risk), color = "black", linewidth = 1.5, linetype = "dashed") +
+  labs(linetype = " ", y = "% with skeletal lesions", x = "Age (years)") +
+  scale_linetype_manual(values = linetypes) +
+  guides(linetype = guide_legend(override.aes = list(alpha = 1))) +
+  plot_theme +
+    theme(legend.position = "bottom") +
+  ggtitle("Risk-free Lesions") +
+  scale_x_continuous(limits = c(0,75), expand = c(0,0)) +
+  scale_y_continuous(limits = c(0,85), breaks = c(0, 25, 50, 75))
+
+
+
+# Cemetery and survivors: Risk-doubling Lesions
+dead_and_alive_2 <- ggplot(plot_data %>% filter(relative_risk == 2),
+                                    aes(x = Age, y = Lesion_perc)) +
+  geom_line(aes(x = interval_midpoint, y = Lesion_Percent, 
+                      group = interaction(relative_risk, rep),
+                linetype = Status), , color = "magenta", alpha = 0.1) +
+  geom_line(data = plot_data_pooled %>% filter(relative_risk == 2)
+            , aes(x = interval_midpoint, y = Lesion_Percent,
+                                         group = relative_risk), color = "magenta", linewidth = 1.5) +
+  geom_line(data = sim_survivors %>% filter(relative_risk == 2), aes(group = interaction(relative_risk, rep), linetype = Status), color = "magenta", alpha = 0.1) +
+  geom_line(data = survivors_pooled %>% filter(relative_risk == 2)
+            , aes(x = Age, y = Lesion_Percent,
+                                         group = relative_risk), color = "magenta", linewidth = 1.5, linetype = "dashed") +
+  labs(linetype = " ", y = "% with skeletal lesions", x = "Age (years)") +
+  scale_linetype_manual(values = linetypes) +
+  guides(linetype = guide_legend(override.aes = list(alpha = 1))) +
+  plot_theme +
+    theme(legend.position = "bottom") +
+  ggtitle("Risk-doubling Lesions") +
+  scale_x_continuous(limits = c(0,75), expand = c(0,0)) +
+  scale_y_continuous(limits = c(0,85), breaks = c(0, 25, 50, 75))
+
+
+
+# Compare Cemeteries
+plot_4C <- ggplot(plot_data, aes(x = interval_midpoint, y = Lesion_Percent)) +
+  geom_line(aes(group = interaction(relative_risk, rep), color = relative_risk), alpha = 0.2) +
+  geom_line(data = plot_data_pooled, aes(x = interval_midpoint, y = Lesion_Percent,
+                                         group = relative_risk, color = relative_risk), linewidth = 1.5) +
+  scale_color_manual(values = plot_colors, labels = c("Risk-free", "Risk-doubled")) +
+  labs(x = "Age at Death (years)", y = "Percent with Skeletal Lesions", color = "Lesion-related Risk") +
+  plot_theme +
+  theme(legend.position = "bottom") +
+  ggtitle("Lesion Frequency in the Cemeteries")
+                                  
+
+# Combine panel plots for scenario 1 and scenario 2
+plots_4A_4B <- plot_grid(dead_and_alive_1,
+          dead_and_alive_2,
+          ncol = 2, labels = "AUTO")
+# Combine these with the third panel, comparing cemetery data from both scenarios
+Figure_4 <- plot_grid(plots_4A_4B, plot_4C, ncol = 1,
+                      labels = c("", "C"))
+
+
+# Save the plot as Figure 4
+# ggsave(filename = paste0(here("Known Unknowns", "Figures"), "/Figure_4.pdf"), 
+#   plot = Figure_4, 
+#   width = 140,
+#   units = "mm",
+#   dpi = 1200)
+
+
+
+# View Figure 4
+Figure_4
+
+```
+  
+  
+**Figure 4.** Percent of skeletal lesions in individuals at each age in both the living cohort, and its corresponding cemetery, in the data produced by each run of the model. Thin lines are results from individual runs; bold lines are the average of pooled runs. In the top row, the percent of total individuals alive at age x who have a skeletal lesion (dashed lines) and the percent of individuals in the corresponding cemetery who died at age x and have a skeletal lesion (solid lines) is shown for 100 runs of the model in which A) lesions have no association with mortality risk and B) lesions are associated with 2x the age-specific risk of death experienced by individuals without lesions.  For cemetery data, ages at death are binned into age categories as if estimated from skeletal features and plotted at the midpoint of each age category. C) Comparison of lesion frequency at each age in the cemeteries generated by each of the two scenarios of lesion-associated mortality risk. A total of 200 simulated cemeteries are plotted in this panel.. Parameter values in both model scenarios are identical, with the exception of lesion-associated mortality risk. The x-axis has been truncated to hide ages beyond 75, when small sample sizes produce high stochasticity; plots with the full range of the x-axis can be found in the supplement (Fig. S3). 
+  
+  
+
+```{r Figure S2}
+# While we're here, save a version of this plot for the supplement (Figure S2) without the truncated x-axis. This plot shows the high stochasticity at older ages due to diminishing sample size in the cohort, most of whom have died before reaching these ages. The stochasticity at these values distracts from the main point/patterns of the data so were relegated to the supplement rather than included in the main text. 
+
+
+# Cemetery and survivors: Risk-free Lesions
+S2A <- ggplot(plot_data %>% filter(relative_risk == 1),
+                                    aes(x = Age, y = Lesion_perc)) +
+  geom_line(aes(x = interval_midpoint, y = Lesion_Percent, 
+                      group = interaction(relative_risk, rep),
+                linetype = Status), , color = "black", alpha = 0.1) +
+  geom_line(data = plot_data_pooled %>% filter(relative_risk == 1)
+            , aes(x = interval_midpoint, y = Lesion_Percent,
+                                         group = relative_risk), color = "black", linewidth = 1.5) +
+  geom_line(data = sim_survivors %>% filter(relative_risk == 1), aes(group = interaction(relative_risk, rep), linetype = Status), color = "black", alpha = 0.1) +
+  geom_line(data = survivors_pooled %>% filter(relative_risk == 1)
+            , aes(x = Age, y = Lesion_Percent,
+                                         group = relative_risk), color = "black", linewidth = 1.5, linetype = "dashed") +
+  labs(linetype = " ", y = "% with skeletal lesions", x = "Age (years)") +
+  scale_linetype_manual(values = linetypes) +
+  guides(linetype = guide_legend(override.aes = list(alpha = 1))) +
+  plot_theme +
+    theme(legend.position = "bottom") +
+  ggtitle("Risk-free Lesions") +
+  scale_y_continuous(limits = c(0,85), breaks = c(0, 25, 50, 75))
+
+
+# Cemetery and survivors: Risk-doubling Lesions
+S2B <- ggplot(plot_data %>% filter(relative_risk == 2),
+                                    aes(x = Age, y = Lesion_perc)) +
+  geom_line(aes(x = interval_midpoint, y = Lesion_Percent, 
+                      group = interaction(relative_risk, rep),
+                linetype = Status), , color = "magenta", alpha = 0.1) +
+  geom_line(data = plot_data_pooled %>% filter(relative_risk == 2)
+            , aes(x = interval_midpoint, y = Lesion_Percent,
+                                         group = relative_risk), color = "magenta", linewidth = 1.5) +
+  geom_line(data = sim_survivors %>% filter(relative_risk == 2), aes(group = interaction(relative_risk, rep), linetype = Status), color = "magenta", alpha = 0.1) +
+  geom_line(data = survivors_pooled %>% filter(relative_risk == 2)
+            , aes(x = Age, y = Lesion_Percent,
+                                         group = relative_risk), color = "magenta", linewidth = 1.5, linetype = "dashed") +
+  labs(linetype = " ", y = "% with skeletal lesions", x = "Age (years)") +
+  scale_linetype_manual(values = linetypes) +
+  guides(linetype = guide_legend(override.aes = list(alpha = 1))) +
+  plot_theme +
+    theme(legend.position = "bottom") +
+  ggtitle("Risk-doubling Lesions") +
+  scale_y_continuous(limits = c(0,85), breaks = c(0, 25, 50, 75))
+
+                                  
+
+# Combine panel plots for scenario 1 and scenario 2
+Figure_S2 <- plot_grid(S2A, S2B,
+          ncol = 2, labels = "AUTO")
+
+# Save the plot as Figure S2
+# ggsave(filename = paste0(here("Known Unknowns", "Figures"), "/Figure_S2.pdf"), 
+#   plot = Figure_S2, 
+#   width = 140,
+#   units = "mm",
+#   dpi = 1200)
+
+```
+  
+  
+  
+#### Survival Analysis
+
+```{r}
+run_survival_analysis <- function(sweep_data) {
+  # Ensure the 'Dead' column exists and is set to 1 for all entries
+  sweep_data <- sweep_data %>% mutate(Dead = 1)
+  
+  # Identify unique combinations of the grouping variables
+  unique_combinations <- sweep_data %>%
+    distinct(mortality, lesion_formation_rate, rep)
+  
+  # Initialize storage
+  survival_data_list <- list()
+  logrank_results <- data.frame(
+    mortality = character(),
+    lesion_formation_rate = numeric(),
+    rep = numeric(),
+    p_value = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  # Iterate over each unique combination
+  for (i in seq_len(nrow(unique_combinations))) {
+    combo <- unique_combinations[i, ]
+    
+    # Filter data for the current combination
+    d <- sweep_data %>%
+      filter(
+        mortality == combo$mortality,
+        lesion_formation_rate == combo$lesion_formation_rate,
+        rep == combo$rep
+      )
+    
+    # Check if necessary columns exist
+    if (!all(c("Age", "Dead", "Lesion") %in% colnames(d))) {
+      warning(paste("Missing required columns in data for combination:", 
+                    paste(combo, collapse = ", ")))
+      next
+    }
+    
+    # Fit the survival model
+    surv_obj <- Surv(time = d$Age, event = d$Dead)
+    fit <- survfit(surv_obj ~ Lesion, data = d)
+    
+    # Obtain the summary of the survival fit
+    surv_summary <- summary(fit)
+    
+    # Extract survival times, estimates, and strata labels
+    surv_df <- data.frame(
+      time = surv_summary$time,
+      survival = surv_summary$surv,
+      group = as.character(surv_summary$strata),
+      mortality = combo$mortality,
+      lesion_formation_rate = combo$lesion_formation_rate,
+      rep = combo$rep
+    )
+    # Identify groups in this combination
+    groups <- names(fit$strata)
+    
+    # For each group, add a row time=0, survival=1
+    initial_rows <- lapply(groups, function(g) {
+      data.frame(
+        time = 0,
+        survival = 1,
+        group = g,
+        mortality = combo$mortality,
+        lesion_formation_rate = combo$lesion_formation_rate,
+        rep = combo$rep,
+        stringsAsFactors = FALSE
+      )
+    }) |> bind_rows()
+    
+    # Combine initial rows with the actual survival data
+    surv_df <- bind_rows(initial_rows, surv_df) %>%
+      arrange(group, time)
+    survival_data_list[[i]] <- surv_df
+    
+    # Perform log-rank test
+    logrank_test <- survdiff(surv_obj ~ Lesion, data = d)
+    p_value <- 1 - pchisq(logrank_test$chisq, df = length(logrank_test$n) - 1)
+    
+    logrank_results <- rbind(
+      logrank_results,
+      data.frame(
+        mortality = combo$mortality,
+        lesion_formation_rate = combo$lesion_formation_rate,
+        rep = combo$rep,
+        p_value = p_value,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+  
+  # Combine all survival data frames
+  survival_data <- bind_rows(survival_data_list)
+  
+  # Return as a named list
+  return(list(
+    survival_data = survival_data,
+    logrank_results = logrank_results
+  ))
+}
+
+
+
+```
+
+
+#### **Plot Survival Curves: Figure 5**
+```{r, fig.dim = c(9,7)}
+
+# ---------------------------
+# 1. Extract survival curves from a single run of each scenario
+# ---------------------------
+sim_data$lesion_formation_rate <- params$lesion_formation_rate
+survival_data1 <- run_survival_analysis(sim_data %>% filter(relative_risk == 1))
+survival_data2 <- run_survival_analysis(sim_data %>% filter(relative_risk == 2))
+# Survival curves, adults only:
+survival_adults1 <- run_survival_analysis(sim_data %>% filter(relative_risk == 1, Age >= 10))
+survival_adults2 <- run_survival_analysis(sim_data %>% filter(relative_risk == 2, Age >= 10))
+
+
+
+
+# ---------------------------
+# 2. Apply the theme to each plot
+# ---------------------------
+
+linetypes <- c(1342, "solid")
+rmr1_survival_curve <- survival_data1$survival_data %>%
+  filter(rep == 1) %>%
+  ggplot(aes(x = time, y = survival)) +
+  geom_line(aes(group = group, linetype = group), linewidth = 1) +
+  scale_linetype_manual(values = linetypes, labels = c("Lesion Absent", "Lesion Present")) +
+    labs(linetype = "", x = "Age (years)", y = "Proportion of group surviving") +
+  ggtitle(label = "Risk-Free Skeletal Lesions: All Ages",
+          subtitle = "Includes ages within the lesion's developmental window") +
+  plot_theme
+
+
+rmr2_survival_curve <- survival_data2$survival_data %>%
+  filter(rep == 1) %>%
+  ggplot(aes(x = time, y = survival)) +
+  geom_line(aes(group = group, linetype = group), color = 'magenta', linewidth = 1) +
+  scale_linetype_manual(values = linetypes, labels = c("Lesion Absent", "Lesion Present")) +
+    labs(linetype = "", x = "Age (years)", y = "Proportion of group surviving") +
+  ggtitle(label = "Risk-Doubling Skeletal Lesions: All Ages",
+                   subtitle = "Includes ages within the lesion's developmental window") +
+  plot_theme
+
+rmr1_adults_curve <- survival_adults1$survival_data %>%
+  filter(rep == 1) %>%
+  ggplot(aes(x = time, y = survival)) +
+  geom_line(aes(group = group, linetype = group), linewidth = 1) +
+  scale_linetype_manual(values = linetypes, labels = c("Lesion Absent", "Lesion Present")) +
+    labs(linetype = "", x = "Age (years)", y = "Proportion of group surviving") +
+  ggtitle(label = "Risk-Free Skeletal Lesions: Ages 10+",
+          subtitle = "Excludes ages within the lesion's developmental window") +
+  plot_theme
+
+rmr2_adults_curve <- survival_adults2$survival_data %>%
+  filter(rep == 1) %>%
+  ggplot(aes(x = time, y = survival)) +
+  geom_line(aes(group = group, linetype = group), color = 'magenta', linewidth = 1) +
+  scale_linetype_manual(values = linetypes, labels = c("Lesion Absent", "Lesion Present")) +
+    labs(linetype = "", x = "Age (years)", y = "Proportion of group surviving") +
+  ggtitle(label = "Risk-Doubling Skeletal Lesions: Ages 10+",
+          subtitle = "Excludes ages within the lesion's developmental window") +
+  plot_theme
+
+
+# ---------------------------
+# 3. Extract legends
+# ---------------------------
+legend1 <- get_legend(rmr1_survival_curve + plot_theme)
+legend2 <- get_legend(rmr2_survival_curve + plot_theme)
+
+# ---------------------------
+# 4. Build compound plots
+# ---------------------------
+risk_free_survival <- plot_grid(
+  rmr1_survival_curve + theme(legend.position = "none"),
+  rmr1_adults_curve + theme(legend.position = "none"),
+  ncol = 2, labels = "AUTO"
+)
+risk_free_survival <- plot_grid(
+  risk_free_survival, legend1, ncol = 1, rel_heights = c(1, 0.1)
+)
+
+risk_2x_survival <- plot_grid(
+  rmr2_survival_curve + theme(legend.position = "none"),
+  rmr2_adults_curve + theme(legend.position = "none"),
+  ncol = 2, labels = c("C", "D")
+)
+risk_2x_survival <- plot_grid(
+  risk_2x_survival, legend2, ncol = 1, rel_heights = c(1, 0.1)
+)
+
+Figure_5 <- plot_grid(risk_free_survival, risk_2x_survival, ncol = 1)
+
+# ---------------------------
+# 5. Save with fixed width
+# ---------------------------
+# ggsave(
+#   filename = here("Known Unknowns", "Figures", "Figure_5.pdf"),
+#   plot = Figure_5,
+#   width = 190,  # mm
+#   units = "mm",
+#   dpi = 1200
+# )
+
+Figure_5
+```
+
+  
+Figure 5. Survival curves for a single run of model scenarios with risk-free and risk-doubling skeletal lesions, including (A, C) and excluding (B, D) individuals inside the age range in which living individuals can form new lesions. A and B show survival curves fit to simulated cemetery data in which skeletal lesions (light grey) have no association with mortality risk. A) Survival curves for complete cemetery data, including ages of active lesion formation. B) Survival curves for individuals aged 10+ years; no new lesions can form in the surviving cohort at these ages. C and D show survival curves fit to simulated cemetery data in which skeletal lesions (lighter pink) are associated with double the baseline mortality risk. C) Survival curves for individuals of all ages. D) Survival curves for individuals aged 10+ years.  
+
+
+
+
+
+
+
+#### **Create Table of log-rank results from survival analyses**
+```{r Log Rank, run = F}
+#### Log-rank Test ####
+# The code below generates Table 1: Median survival time, 95% CI,and % of each scenario's 100 runs that produce data that return a significant log-rank test. 
+
+
+logrank1_main <- survival_data1$logrank_results %>%
+  mutate(significant = if_else(p_value < 0.05, 1, 0)) %>%
+  summarise(percent_significant = sum(significant, na.rm = T))
+logrank2_main <- survival_data2$logrank_results %>%
+  mutate(significant = if_else(p_value < 0.05, 1, 0)) %>%
+  summarise(percent_significant = sum(significant, na.rm = T))
+
+logrank1_adults <- survival_adults1$logrank_results %>%
+  mutate(significant = if_else(p_value < 0.05, 1, 0)) %>%
+  summarise(percent_significant = sum(significant, na.rm = T))
+
+logrank2_adults <- survival_adults2$logrank_results %>%
+  mutate(significant = if_else(p_value < 0.05, 1, 0)) %>%
+  summarise(percent_significant = sum(significant, na.rm = T))
+
+
+
+
+# median survival time and 95% CI
+median_survival_rmr1 <- sim_data %>% filter(relative_risk == 1) %>%
+  group_by(rep, Lesion) %>%
+  summarise(median_survival_time = median(Age), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(Lesion) %>%
+  summarise(Scenario = "Risk-free",
+            Ages = "All Ages",
+            Median = median(median_survival_time),
+            lower_CI = round(quantile(median_survival_time, probs = 0.025), 1),
+            upper_CI = round(quantile(median_survival_time, probs = 0.0975), 1)
+  )
+
+median_adults_rmr1 <- sim_data %>% filter(relative_risk == 1, Age >= 15) %>%
+  filter(Age >=15) %>%
+  group_by(rep, Lesion) %>%
+  summarise(median_survival_time = median(Age), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(Lesion) %>%
+  summarise(Scenario = "Risk-free",
+            Ages = "15+",
+            Median = median(median_survival_time),
+            lower_CI = round(quantile(median_survival_time, probs = 0.025), 1),
+            upper_CI = round(quantile(median_survival_time, probs = 0.0975), 1)
+  )
+
+median_survival_rmr2 <- sim_data %>% filter(relative_risk == 2) %>%
+  group_by(rep, Lesion) %>%
+  summarise(median_survival_time = median(Age), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(Lesion) %>%
+  summarise(Scenario = "Risk-doubled",
+            Ages = "All Ages",
+            Median = median(median_survival_time),
+            lower_CI = round(quantile(median_survival_time, probs = 0.025), 1),
+            upper_CI = round(quantile(median_survival_time, probs = 0.0975), 1)
+  )
+
+median_adults_rmr2 <- sim_data %>% filter(relative_risk == 2, Age >= 15) %>%
+  filter(Age >=15) %>%
+  group_by(rep, Lesion) %>%
+  summarise(median_survival_time = median(Age), .groups = "keep") %>%
+  ungroup() %>%
+  group_by(Lesion) %>%
+  summarise(Scenario = "Risk-doubled",
+            Ages = "15+",
+            Median = median(median_survival_time),
+            lower_CI = round(quantile(median_survival_time, probs = 0.025), 1),
+            upper_CI = round(quantile(median_survival_time, probs = 0.0975), 1)
+  )
+
+median_list <- list(median_survival_rmr1, 
+                    median_survival_rmr2, 
+                    median_adults_rmr1,
+                    median_adults_rmr2)
+
+
+survival_time_table <- rbindlist(median_list) %>%
+  mutate(`Skeletal Lesion` = if_else(Lesion == 1, "Present", "Absent"),
+         `Median Survival Time (95% CI)` = paste(Median, " (", lower_CI, " ,", upper_CI, ")")) %>%
+  select(Scenario, Ages, `Skeletal Lesion`, `Median Survival Time (95% CI)`)
+
+# write.csv(survival_time_table,
+#           file = paste0(here("Known Unknowns", "Tables"), "/Table_1.pdf"))
+
+survival_time_table
+
+```
+
+  
+  **Table 1.** Results of Kaplan-Meier survival analysis for all-ages data and the subset of adults (ages 15+ years).   
+      
+      
+      
+-------------------------------------------------------------------------------------------------------
+      
+      
+      
