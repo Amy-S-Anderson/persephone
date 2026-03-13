@@ -277,9 +277,9 @@ server <- function(input, output, session) {
     req(sim())
     sim()$individual_outcomes %>%
       mutate(
-        Age_Interval = assign_age_interval(Age),
+        Age_Interval = assign_age_interval(age),
         Lesion_Status = factor(
-          ifelse(Lesion == 1, "Present", "Absent"),
+          ifelse(lesion == 1, "Present", "Absent"),
           levels = c("Absent", "Present")
         )
       )
@@ -295,7 +295,7 @@ server <- function(input, output, session) {
       geom_bar(position = "stack", width = 0.8) +
       scale_fill_manual(values = c("Absent" = col_no_lesion, "Present" = col_lesion)) +
       labs(title = "Age-at-Death Distribution",
-           x = "Age at Death", y = "Count", fill = "Lesion") +
+           x = "Age at Death", y = "Count", fill = "lesion") +
       theme_bw(base_size = 13) +
       theme(
         axis.text.x = element_text(angle = 45, hjust = 1),
@@ -308,7 +308,7 @@ server <- function(input, output, session) {
     validate(need(sim(), ""))
     prev <- cemetery() %>%
       group_by(Age_Interval) %>%
-      summarise(Pct = sum(Lesion) / n() * 100, n = n(), .groups = "drop")
+      summarise(Pct = sum(lesion) / n() * 100, n = n(), .groups = "drop")
 
     ggplot(prev, aes(x = Age_Interval, y = Pct)) +
       geom_col(fill = col_lesion, alpha = 0.85, width = 0.8) +
@@ -326,14 +326,14 @@ server <- function(input, output, session) {
   output$cem_summary <- renderPrint({
     validate(need(sim(), ""))
     d <- sim()$individual_outcomes
-    with_les <- sum(d$Lesion == 1)
+    with_les <- sum(d$lesion == 1)
     cat(sprintf("Total individuals: %d\n", nrow(d)))
     cat(sprintf("With lesions: %d (%.1f%%)\n", with_les, with_les / nrow(d) * 100))
-    cat(sprintf("Mean age at death:  %.1f years (all)\n", mean(d$Age)))
+    cat(sprintf("Mean Age at death:  %.1f years (all)\n", mean(d$age)))
     if (with_les > 0) {
-      cat(sprintf("                    %.1f years (with lesion)\n", mean(d$Age[d$Lesion == 1])))
+      cat(sprintf("                    %.1f years (with lesion)\n", mean(d$age[d$lesion == 1])))
     }
-    cat(sprintf("                    %.1f years (without lesion)\n", mean(d$Age[d$Lesion == 0])))
+    cat(sprintf("                    %.1f years (without lesion)\n", mean(d$age[d$lesion == 0])))
   })
 
   # =========================================================================
@@ -370,8 +370,8 @@ server <- function(input, output, session) {
 
   filtered <- reactive({
     req(sim())
-    d <- sim()$individual_outcomes %>% filter(Age >= input$min_age)
-    d$Dead <- 1
+    d <- sim()$individual_outcomes %>% filter(age >= input$min_age)
+    d$dead <- 1
     d
   })
 
@@ -379,10 +379,10 @@ server <- function(input, output, session) {
     validate(need(sim(), "Click 'Run Simulation' to begin."))
     d <- filtered()
     validate(need(nrow(d) > 10, "Too few individuals remain after filtering."))
-    validate(need(length(unique(d$Lesion)) == 2,
+    validate(need(length(unique(d$lesion)) == 2,
                   "All remaining individuals have the same lesion status."))
 
-    fit <- survfit(Surv(Age, Dead) ~ Lesion, data = d)
+    fit <- survfit(Surv(age, dead) ~ lesion, data = d)
     s <- summary(fit)
 
     surv_df <- data.frame(
@@ -416,9 +416,9 @@ server <- function(input, output, session) {
   output$logrank_text <- renderPrint({
     validate(need(sim(), ""))
     d <- filtered()
-    validate(need(length(unique(d$Lesion)) == 2, "Need both groups for comparison."))
+    validate(need(length(unique(d$lesion)) == 2, "Need both groups for comparison."))
 
-    test <- survdiff(Surv(Age, Dead) ~ Lesion, data = d)
+    test <- survdiff(Surv(age, dead) ~ lesion, data = d)
     p <- 1 - pchisq(test$chisq, df = length(test$n) - 1)
 
     cat(sprintf("Chi-squared: %.2f\n", test$chisq))
@@ -430,10 +430,10 @@ server <- function(input, output, session) {
   output$interpretation <- renderUI({
     req(sim())
     d <- filtered()
-    if (length(unique(d$Lesion)) < 2) return(NULL)
+    if (length(unique(d$lesion)) < 2) return(NULL)
 
     test <- tryCatch(
-      survdiff(Surv(Age, Dead) ~ Lesion, data = d),
+      survdiff(Surv(age, dead) ~ lesion, data = d),
       error = function(e) NULL
     )
     if (is.null(test)) return(NULL)
@@ -522,12 +522,12 @@ server <- function(input, output, session) {
   age_max <- 100
 
   siler_df <- data.frame(
-    Age = 0:age_max
+    age = 0:age_max
   ) %>%
     mutate(
-      Juvenile = regime$a1 * exp(-regime$b1 * Age),
+      Juvenile = regime$a1 * exp(-regime$b1 * age),
       Background = regime$a2,
-      Senescent = regime$a3 * exp(regime$b3 * Age),
+      Senescent = regime$a3 * exp(regime$b3 * age),
       Total = Juvenile + Background + Senescent
     )
 
@@ -538,14 +538,14 @@ server <- function(input, output, session) {
           Total * input$rmr,
 
         input$risk_type == "time_decreasing" ~
-          Total * input$rmr / ((Age / 10) + input$rmr),
+          Total * input$rmr / ((age / 10) + input$rmr),
 
         input$risk_type == "time_increasing" ~
-          Total * ((Age / 10) + input$rmr) / input$rmr
+          Total * ((age / 10) + input$rmr) / input$rmr
       )
     )
 
-  ggplot(siler_df, aes(x = Age)) +
+  ggplot(siler_df, aes(x = age)) +
     geom_line(aes(y = Total, color = "Baseline hazard"), linewidth = 1.2) +
     geom_line(aes(y = Lesion_Modified, color = "Lesion-modified hazard"), linewidth = 1.2) +
     scale_color_manual(
@@ -593,7 +593,7 @@ server <- function(input, output, session) {
 
   d_plot <- bind_rows(d_base, d_lesion)
 
-  ggplot(d_plot, aes(x = Age, y = dx, fill = Group)) +
+  ggplot(d_plot, aes(x = age, y = dx, fill = Group)) +
     geom_col(position = "identity", alpha = 0.45) +
     scale_fill_manual(values = c(
       "Baseline" = col_dark,
