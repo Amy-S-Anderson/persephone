@@ -211,7 +211,7 @@ Simulate_Cemetery <- function(cohort_size,
   }
 
   # Apply Age Misestimation (if any)
-  if(age_noise) cohort <- apply_estimation_error(cohort, error_model =)
+  if(age_noise) cohort <- apply_estimation_error(cohort)
 
   # Remove internal columns before returning
   cohort <- cohort %>% dplyr::select(-"dead", -"was_deposited")
