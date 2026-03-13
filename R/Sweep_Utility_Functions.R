@@ -96,7 +96,7 @@ run_model_single = function(params, output_directory, seed = NA) {
   
   
   #Write input parameters to output_directory
-  write(toJSON(params, pretty=TRUE), file=file.path(output_directory, "params_used.json"))
+  write(jsonlite::toJSON(params, pretty=TRUE), file=file.path(output_directory, "params_used.json"))
   
   #Run model
   output = do.call(Simulate_Cemetery, params)
@@ -146,7 +146,7 @@ run_model_sweep <- function(base_params, root_output_directory,
       paste0(target_param, "=", val)
     )
     
-    params <- copy(base_params)
+    params <- data.table::copy(base_params)
     params[[target_param]] <- val
     
     run_model_reps(params, param_set_output_directory, numreps = numreps)
@@ -159,7 +159,7 @@ run_model_sweep <- function(base_params, root_output_directory,
     numreps = numreps
   )
   
-  write(toJSON(sweep_data, pretty = TRUE),
+  write(jsonlite::toJSON(sweep_data, pretty = TRUE),
         file = file.path(root_output_directory, "sweep_data.json"))
   
   # -----------------------------
@@ -336,6 +336,7 @@ read_sweep <- function(mortality_regime, lesion_rates, reps, rmr) {
 # it uses parallel processing for a faster run time, since it is designed to run survival analysis on a huge number of data sets. 
 # -------------------------
 
+#' @importFrom foreach foreach %dopar%
 #' @export
 run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
   # Ensure dead column exists (event indicator for survival analysis — all are dead)
@@ -349,8 +350,8 @@ run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
   # Set up parallel backend
   if (parallel) {
     if (is.null(workers)) workers <- parallel::detectCores() - 1
-    cl <- makeCluster(workers)
-    registerDoParallel(cl)
+    cl <- parallel::makeCluster(workers)
+    doParallel::registerDoParallel(cl)
   }
   
   # Parallel loop
@@ -365,8 +366,8 @@ run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
                        }
 
                        # Survival object + model
-                       surv_obj <- Surv(time = d$age, event = d$dead)
-                       fit <- survfit(surv_obj ~ lesion, data = d)
+                       surv_obj <- survival::Surv(time = d$age, event = d$dead)
+                       fit <- survival::survfit(surv_obj ~ lesion, data = d)
                        
                        surv_summary <- summary(fit)
                        
@@ -380,7 +381,7 @@ run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
                        )
                        
                        # Log-rank test
-                       logrank_test <- survdiff(surv_obj ~ lesion, data = d)
+                       logrank_test <- survival::survdiff(surv_obj ~ lesion, data = d)
                        p_value <- 1 - pchisq(logrank_test$chisq, df = length(logrank_test$n) - 1)
                        
                        list(
@@ -395,7 +396,7 @@ run_survival_analysis <- function(sweep_data, parallel = TRUE, workers = NULL) {
                      }
   
   # Stop parallel backend
-  if (parallel) stopCluster(cl)
+  if (parallel) parallel::stopCluster(cl)
   
   # Clean results
   results <- Filter(Negate(is.null), results)
