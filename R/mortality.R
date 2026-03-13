@@ -39,10 +39,10 @@
 #' @param mortality_param Numeric vector containing the mortality parameters.
 #'   For the \code{"usher3"} model, this must be a length-6 vector:
 #'   \describe{
-#'     \item{[1] k2}{The mortality multiplier for agents with lesions. A value
+#'     \item{\code{[1]} k2}{The mortality multiplier for agents with lesions. A value
 #'       of 1.0 means no excess mortality; values > 1 indicate elevated risk.
 #'       Must be non-negative.}
-#'     \item{[2:6] b_siler}{The five Siler hazard parameters using the demohaz
+#'     \item{\code{[2:6]} b_siler}{The five Siler hazard parameters using the demohaz
 #'       parameterization: \code{c(b1, b2, b3, b4, b5)}. See
 #'       \code{\link[demohaz]{hsiler}} for details.}
 #'   }
