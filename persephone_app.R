@@ -211,30 +211,39 @@ ui <- fluidPage(
       tabsetPanel(
         id = "tabs", type = "tabs",
 
-        # =====================================================================
-        # Tab: Cemetery
-        # =====================================================================
-        tabPanel("Cemetery",
+        tabPanel("Set-up",
           br(),
           fluidRow(
-            column(6, plotOutput("plot_cem_age", height = "400px")),
-            column(6, plotOutput("plot_cem_lesion", height = "400px"))
-          ),
-          hr(),
-          div(class = "summary-text", verbatimTextOutput("cem_summary"))
-        ),
-
-        # =====================================================================
-        # Tab: Living Population
-        # =====================================================================
-        tabPanel("Living Population",
-          br(),
-          fluidRow(
-            column(6, plotOutput("plot_alive", height = "400px")),
-            column(6, plotOutput("plot_lesion_pct", height = "400px"))
+            column(12, plotOutput("plot_siler_setup", height = "500px"))
           )
         ),
 
+
+       tabPanel("True Population",
+          br(),
+
+          fluidRow(
+            column(12, plotOutput("plot_alive", height = "400px"))
+          ),
+
+          fluidRow(
+            column(12, plotOutput("plot_lesion_pct", height = "400px"))
+          ),
+
+          hr(),
+
+          fluidRow(
+            column(12, plotOutput("plot_cem_age", height = "400px"))
+          ),
+
+          fluidRow(
+            column(12, plotOutput("plot_cem_lesion", height = "400px"))
+          ),
+
+          hr(),
+          div(class = "summary-text", verbatimTextOutput("cem_summary"))
+        ),
+      
         # =====================================================================
         # Tab: Survival Analysis
         # =====================================================================
@@ -563,8 +572,44 @@ server <- function(input, output, session) {
       write.csv(sim()$survivors, file, row.names = FALSE)
     }
   )
-}
 
+  # =========================================================================
+  # Set-up Tab
+  # =========================================================================
+
+  output$plot_siler_setup <- renderPlot({
+    regime <- mortality_regimes[[input$mortality_regime]]
+
+    age_max <- 100
+
+    siler_df <- data.frame(
+      Age = 0:age_max
+    )
+
+    siler_df <- siler_df %>%
+      mutate(
+        Juvenile = regime$a1 * exp(-regime$b1 * Age),
+        Background = regime$a2,
+        Senescent = regime$a3 * exp(regime$b3 * Age),
+        Total = Juvenile + Background + Senescent
+      )
+
+    ggplot(siler_df, aes(x = Age, y = Total)) +
+      geom_line(linewidth = 1.2, color = col_dark) +
+      labs(
+        title = paste0("Siler Mortality Function: ", input$mortality_regime),
+        x = "Age (years)",
+        y = "Annual mortality hazard"
+      ) +
+      theme_bw(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold")
+      )
+  })
+
+
+
+}
 
 # =============================================================================
 # Launch
