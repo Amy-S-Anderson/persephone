@@ -4,6 +4,13 @@
 # Test fixtures
 # -----------------------------------------------------------------------------
 
+# Siler parameters (Gage & Dyke 1986, Table 2, Level 15)
+a_siler_test <- c(0.175, 1.40, 0.00368, 0.000075, 0.0917)
+b_siler_test <- demohaz::trad_to_demohaz_siler_param(a_siler_test)
+
+# mortality_param = c(k2, b_siler) where k2 = 1.2
+mortality_param_test <- c(1.2, b_siler_test)
+
 create_test_state <- function(n = 100) {
   data.frame(
     agent_id = 1:n,
@@ -20,7 +27,7 @@ create_test_state <- function(n = 100) {
 
 test_that("mortality module raises error when mortality_model is not 'usher3'", {
   state <- create_test_state()
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   expect_error(
@@ -59,7 +66,7 @@ test_that("mortality module raises error when mortality_model is not 'usher3'", 
 
 test_that("mortality module executes successfully with usher3 model", {
   state <- create_test_state()
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   expect_no_error(
@@ -74,7 +81,7 @@ test_that("mortality module executes successfully with usher3 model", {
 
 test_that("mortality module returns a dataframe", {
   state <- create_test_state()
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   result <- apply_mortality(
@@ -93,7 +100,7 @@ test_that("mortality module returns a dataframe", {
 
 test_that("output state contains same columns as input state", {
   state <- create_test_state()
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   result <- apply_mortality(
@@ -108,7 +115,7 @@ test_that("output state contains same columns as input state", {
 
 test_that("output state has same dimensions as input state", {
   state <- create_test_state(n = 150)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   result <- apply_mortality(
@@ -125,7 +132,7 @@ test_that("output state has same dimensions as input state", {
   
 test_that("output state has expected column types", {
   state <- create_test_state()
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   result <- apply_mortality(
@@ -148,7 +155,7 @@ test_that("output state has expected column types", {
 
 test_that("surviving agents have age incremented by dx", {
   state <- create_test_state(n = 100)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   result <- apply_mortality(
@@ -167,7 +174,7 @@ test_that("surviving agents have age incremented by dx", {
 
 test_that("dead agents retain their original age", {
   state <- create_test_state(n = 100)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 5
 
   result <- apply_mortality(
@@ -186,7 +193,7 @@ test_that("dead agents retain their original age", {
 
 test_that("age increment works correctly with dx = 1", {
   state <- create_test_state(n = 100)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 1
 
   result <- apply_mortality(
@@ -209,7 +216,7 @@ test_that("age increment works correctly with dx = 1", {
 
 test_that("age increment works correctly with dx = 10", {
   state <- create_test_state(n = 100)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 10
 
   result <- apply_mortality(
@@ -232,7 +239,7 @@ test_that("age increment works correctly with dx = 10", {
 
 test_that("age increment works correctly with fractional dx", {
   state <- create_test_state(n = 100)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 0.5
 
   result <- apply_mortality(
@@ -255,7 +262,7 @@ test_that("age increment works correctly with fractional dx", {
 
 test_that("age increment works correctly with small dx values", {
   state <- create_test_state(n = 100)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   dx <- 0.1
 
   result <- apply_mortality(
@@ -278,7 +285,7 @@ test_that("age increment works correctly with small dx values", {
 
 test_that("module works with multiple dx values", {
   state <- create_test_state(n = 100)
-  mortality_param <- list()
+  mortality_param <- mortality_param_test
   
   dx_values <- c(1, 2, 5, 0.5, 10)
   
