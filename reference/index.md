@@ -1,0 +1,57 @@
+# Package index
+
+## All functions
+
+- [`CoaleDemenyWestF3`](https://amy-s-anderson.github.io/persephone/reference/CoaleDemenyWest.md)
+  [`CoaleDemenyWestF5`](https://amy-s-anderson.github.io/persephone/reference/CoaleDemenyWest.md)
+  [`CoaleDemenyWestF11`](https://amy-s-anderson.github.io/persephone/reference/CoaleDemenyWest.md)
+  [`CoaleDemenyWestF15`](https://amy-s-anderson.github.io/persephone/reference/CoaleDemenyWest.md)
+  [`CoaleDemenyWestF17`](https://amy-s-anderson.github.io/persephone/reference/CoaleDemenyWest.md)
+  [`CoaleDemenyWestF21`](https://amy-s-anderson.github.io/persephone/reference/CoaleDemenyWest.md)
+  : Coale-Demeny West Female Model Life Table Siler Parameters
+- [`Simulate_Cemetery()`](https://amy-s-anderson.github.io/persephone/reference/Simulate_Cemetery.md)
+  : Simulate a cemetery using the Persephone ABM
+- [`apply_deposition()`](https://amy-s-anderson.github.io/persephone/reference/apply_deposition.md)
+  : Apply Deposition Filtering to Agent Population
+- [`apply_estimation_error()`](https://amy-s-anderson.github.io/persephone/reference/apply_estimation_error.md)
+  : Apply Estimation Error to Agent Population
+- [`apply_lesions()`](https://amy-s-anderson.github.io/persephone/reference/apply_lesions.md)
+  : Apply Lesion Acquisition to Agent Population
+- [`apply_mortality_usher3()`](https://amy-s-anderson.github.io/persephone/reference/apply_mortality_usher3.md)
+  : Apply Mortality to Agent Population
+- [`apply_preservation()`](https://amy-s-anderson.github.io/persephone/reference/apply_preservation.md)
+  : Apply Preservation Filtering to Agent Population
+- [`create_assemblage_distribution()`](https://amy-s-anderson.github.io/persephone/reference/create_assemblage_distribution.md)
+  : Create Empirical Distribution from Assemblage Data
+- [`generate_output_directory()`](https://amy-s-anderson.github.io/persephone/reference/generate_output_directory.md)
+  : Generate output directory path from parameters
+- [`get_default_params()`](https://amy-s-anderson.github.io/persephone/reference/get_default_params.md)
+  : Get default simulation parameters
+- [`lesions_to_percents()`](https://amy-s-anderson.github.io/persephone/reference/lesions_to_percents.md)
+  : Calculate lesion prevalence by age interval
+- [`persephone`](https://amy-s-anderson.github.io/persephone/reference/persephone-package.md)
+  [`persephone-package`](https://amy-s-anderson.github.io/persephone/reference/persephone-package.md)
+  : persephone: Agent-Based Model for Simulating Skeletal Lesion
+  Formation and Mortality in Archaeological Populations
+- [`plot_survival_curves()`](https://amy-s-anderson.github.io/persephone/reference/plot_survival_curves.md)
+  : Plot survival curves by lesion status
+- [`read_model_sweep()`](https://amy-s-anderson.github.io/persephone/reference/read_model_sweep.md)
+  : Read saved sweep results from disk
+- [`read_sweep()`](https://amy-s-anderson.github.io/persephone/reference/read_sweep.md)
+  : Read and combine saved sweep results
+- [`run_app()`](https://amy-s-anderson.github.io/persephone/reference/run_app.md)
+  : Launch the Persephone Shiny app
+- [`run_model_reps()`](https://amy-s-anderson.github.io/persephone/reference/run_model_reps.md)
+  : Run the model multiple times with identical parameters
+- [`run_model_single()`](https://amy-s-anderson.github.io/persephone/reference/run_model_single.md)
+  : Run the model once and save results to disk
+- [`run_model_sweep()`](https://amy-s-anderson.github.io/persephone/reference/run_model_sweep.md)
+  : Sweep across values of a target parameter
+- [`run_survival_analysis()`](https://amy-s-anderson.github.io/persephone/reference/run_survival_analysis.md)
+  : Run survival analysis on sweep results
+- [`run_sweep()`](https://amy-s-anderson.github.io/persephone/reference/run_sweep.md)
+  : Run a parameter sweep over lesion formation rates
+- [`scenario_lineplot()`](https://amy-s-anderson.github.io/persephone/reference/scenario_lineplot.md)
+  : Line plot of average lesion prevalence by scenario
+- [`sweep_lineplot()`](https://amy-s-anderson.github.io/persephone/reference/sweep_lineplot.md)
+  : Line plot of lesion prevalence across sweep replicates
