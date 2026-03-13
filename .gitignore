@@ -32,3 +32,4 @@ Thumbs.db
 # Compiled vignettes
 vignettes/*.html
 vignettes/*.pdf
+docs

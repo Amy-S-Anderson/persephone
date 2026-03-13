@@ -42,3 +42,4 @@ Remotes:
 Depends: 
     R (>= 3.5)
 LazyData: true
+URL: https://amy-s-anderson.github.io/persephone/

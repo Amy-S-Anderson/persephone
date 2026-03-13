@@ -11,7 +11,10 @@ Simulate_Cemetery(
   formation_window_closes,
   mortality_risk_type = "proportional",
   relative_mortality_risk = 1,
-  mortality_regime
+  mortality_regime,
+  deposition_param = 0,
+  loss_strength = "none",
+  age_noise = FALSE
 )
 }
 \arguments{

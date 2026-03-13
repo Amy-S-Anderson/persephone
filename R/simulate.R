@@ -21,7 +21,8 @@ create_cohort <- function(cohort_size) {
              age = 0,
              lesion = 0,
              dead = FALSE,
-             in_sample = TRUE)
+             in_sample = TRUE
+             )
 }
 
 #' Age up all living agents to the current timestep
@@ -153,7 +154,10 @@ Simulate_Cemetery <- function(cohort_size,
                               formation_window_closes,
                               mortality_risk_type = "proportional",
                               relative_mortality_risk = 1,
-                              mortality_regime) {
+                              mortality_regime,
+                              deposition_param = 0,
+                              loss_strength = 'none',
+                              age_noise = FALSE) {
   cohort <- create_cohort(cohort_size)
 
   k <- 0 # Initialize time counter
@@ -184,6 +188,28 @@ Simulate_Cemetery <- function(cohort_size,
 
   # Once 10 or fewer people are left alive — they all enter the cemetery
   cohort <- finalize_cemetery(cohort, k)
+
+  # Apply Deposition bias (if any)
+  cohort <- apply_deposition(cohort, deposition_model = 'cutoff', deposition_param = deposition_param, dx = 1)
+
+  # Apply Preservation bias (if any)
+  if (loss_strength == 'none') {
+  } else {
+    if (loss_strength == 'weak') {
+      a_siler <- c(0.175, 1.40, 0.00368, 0.000075, 0.0917)
+    } else if (loss_strength == 'moderate') {
+      a_siler <- c(0.175, 1.40, 0.00368, 0.000075, 0.0917)
+    } else if (loss_strength == 'strong') {
+      a_siler <- c(0.175, 1.40, 0.00368, 0.000075, 0.0917)
+    } else {
+      stop("invalid loss_strength")
+    }
+    b_siler <- demohaz::trad_to_demohaz_siler_param(a_siler)
+    cohort <- apply_preservation(cohort, preservation_model = 'siler', preservation_param = b_siler, dx = 1)
+  }
+
+  # Apply Age Misestimation (if any)
+  if(age_noise) cohort <- add_age_noise(cohort)
 
   # Model output
   output <- list(individual_outcomes = cohort, survivors = Alive_sum)

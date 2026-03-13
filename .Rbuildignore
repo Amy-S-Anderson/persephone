@@ -3,3 +3,7 @@
 ^LICENSE\.md$
 ^Main_Analysis\.Rmd$
 ^Sensitivity_Analysis\.R$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
