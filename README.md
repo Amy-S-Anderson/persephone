@@ -41,7 +41,7 @@ devtools::check()
 devtools::test()
 
 # Run a specific test file
-testthat::test_file("tests/testthat/unit/test-estimation-error.R")
+testthat::test_file("tests/testthat/test-estimation-error.R")
 ```
 
 ### Loading for Development
