@@ -14,7 +14,12 @@
 # Function to calculate percent of individuals at each age in the cemetery with skeletal lesions
 # -------------------------
 
-lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes a data frame and a c() of named variables. 
+#' Calculate lesion prevalence by age interval
+#' @param cemetery_df Data frame of cemetery data with age and lesion columns
+#' @param group_vars Character vector of grouping variable names
+#' @return Data frame with Lesion_Percent by Age_Interval and groups
+#' @export
+lesions_to_percents <- function(cemetery_df, group_vars) {
   
   # Define age interval labels and their midpoints
   age_lookup <- data.frame(
@@ -32,22 +37,22 @@ lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes
   plot_prep_data <- cemetery_df %>%
     mutate(
       Age_Interval = factor(case_when(
-        Age < 2 ~ "0-1",
-        Age >= 2 & Age < 6 ~ "2-5",
-        Age >= 6 & Age < 10 ~ "6-9",
-        Age >= 10 & Age < 15 ~ "10-14",
-        Age >= 15 & Age < 20 ~ "15-19",
-        Age >= 20 & Age < 30 ~ "20-29",
-        Age >= 30 & Age < 40 ~ "30-39",
-        Age >= 40 & Age < 50 ~ "40-49",
-        Age >= 50 & Age < 60 ~ "50-59",
-        Age >= 60 ~ "60+"
+        age < 2 ~ "0-1",
+        age >= 2 & age < 6 ~ "2-5",
+        age >= 6 & age < 10 ~ "6-9",
+        age >= 10 & age < 15 ~ "10-14",
+        age >= 15 & age < 20 ~ "15-19",
+        age >= 20 & age < 30 ~ "20-29",
+        age >= 30 & age < 40 ~ "30-39",
+        age >= 40 & age < 50 ~ "40-49",
+        age >= 50 & age < 60 ~ "50-59",
+        age >= 60 ~ "60+"
       ), levels = levels(age_lookup$Age_Interval))
     ) %>%
     # Group by specified variables and Age_Interval
     group_by(across(all_of(c(group_vars, "Age_Interval")))) %>%
     summarise(
-      Lesion_Percent = sum(Lesion) / n() * 100,
+      Lesion_Percent = sum(lesion) / n() * 100,
       .groups = "drop"
     ) %>%
     # Join midpoints only where Age_Interval exists
@@ -65,6 +70,11 @@ lesions_to_percents <- function(cemetery_df, group_vars) { # this function takes
 # Make a line plot for this lesion_exposure parameter sweep:
 # -------------------------
 
+#' Line plot of lesion prevalence across sweep replicates
+#' @param plot_data Data frame from lesions_to_percents
+#' @param plot_color Color for the lines
+#' @return A ggplot object
+#' @export
 sweep_lineplot <- function(plot_data, plot_color){
   ggplot(data = plot_data, aes(x = interval_midpoint, y = Lesion_Percent)) +
     geom_line(aes(group = rep), color = plot_color, alpha = 0.05) +
@@ -97,6 +107,10 @@ sweep_lineplot <- function(plot_data, plot_color){
 # Plot AVERAGE OUTCOMES for each combination scenario of lesion exposure and mortality
 # -------------------------
 
+#' Line plot of average lesion prevalence by scenario
+#' @param plot_summary_data Summary data frame with mean outcomes
+#' @return A ggplot object
+#' @export
 scenario_lineplot <- function(plot_summary_data){
   ggplot(data = plot_summary_data, aes(x = Age_Interval, y = Lesion_Percent)) +
     geom_line(aes( group = lesion_formation_rate,
@@ -127,6 +141,10 @@ scenario_lineplot <- function(plot_summary_data){
 # Plot Survival curves for a single run of each parameter combination
 # -------------------------
 
+#' Plot survival curves by lesion status
+#' @param survival_data Data frame from run_survival_analysis
+#' @return A ggplot object
+#' @export
 plot_survival_curves <- function(survival_data){
   lesion_colors = c("black", '#b9c28d')
   plots <- ggplot(survival_data, aes(x = time, y = survival)) +

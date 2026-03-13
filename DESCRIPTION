@@ -1,0 +1,44 @@
+Package: persephone
+Title: Agent-Based Model for Simulating Skeletal Lesion Formation and Mortality in Archaeological Populations
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Amy", "Anderson", , "Amy.Anderson-1@colorado.edu", role = c("aut", "cre")),
+    person("Michael Holton", "Price", role = "ctb"),
+    person("Nicolas", "Gauthier", role = "ctb"),
+    person("Bret", "Beheim", role = "ctb")
+    )
+Description: An agent-based model (ABM) for simulating skeletal assemblage
+    data in bioarchaeology. Individuals in a birth cohort face annual risks of
+    skeletal lesion formation and age-specific mortality following a Siler
+    hazard model. Lesion status can modify mortality risk, enabling
+    exploration of the osteological paradox and evaluation of survival
+    analysis methods applied to cemetery data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    data.table,
+    demohaz (>= 0.1.1),
+    dplyr,
+    doParallel,
+    foreach,
+    ggplot2,
+    here,
+    jsonlite,
+    magrittr,
+    readr,
+    survival
+Suggests:
+    cowplot,
+    knitr,
+    rmarkdown,
+    scales,
+    shiny,
+    testthat
+VignetteBuilder: knitr
+Remotes: 
+    MichaelHoltonPrice/demohaz
+Depends: 
+    R (>= 3.5)
+LazyData: true

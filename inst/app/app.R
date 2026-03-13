@@ -5,120 +5,24 @@
 # =============================================================================
 
 library(shiny)
+library(persephone)
 library(ggplot2)
 library(dplyr)
 library(survival)
 
 # =============================================================================
-# Mortality Regimes: Siler function parameters
-# Coale & Demeny West model life tables for females
+# Mortality Regimes: named list for UI dropdown
+# Data comes from persephone package
 # =============================================================================
 
 mortality_regimes <- list(
-  "CDW Level 3 (high mortality)" = data.frame(
-    a1 = 0.558, b1 = 1.05, a2 = 0.01225, a3 = 0.000520, b3 = 0.0727,
-    name = "CoaleDemenyWestF3"
-  ),
-  "CDW Level 5" = data.frame(
-    a1 = 0.457, b1 = 1.07, a2 = 0.01037, a3 = 0.000359, b3 = 0.0763,
-    name = "CoaleDemenyWestF5"
-  ),
-  "CDW Level 11" = data.frame(
-    a1 = 0.256, b1 = 1.17, a2 = 0.00596, a3 = 0.000133, b3 = 0.086,
-    name = "CoaleDemenyWestF11"
-  ),
-  "CDW Level 15" = data.frame(
-    a1 = 0.175, b1 = 1.40, a2 = 0.00368, a3 = 0.000075, b3 = 0.0917,
-    name = "CoaleDemenyWestF15"
-  ),
-  "CDW Level 17" = data.frame(
-    a1 = 0.14, b1 = 1.57, a2 = 0.00265, a3 = 0.000056, b3 = 0.0949,
-    name = "CoaleDemenyWestF17"
-  ),
-  "CDW Level 21 (low mortality)" = data.frame(
-    a1 = 0.091, b1 = 2.78, a2 = 0.00092, a3 = 0.000025, b3 = 0.1033,
-    name = "CoaleDemenyWestF21"
-  )
+  "CDW Level 3 (high mortality)" = CoaleDemenyWestF3,
+  "CDW Level 5" = CoaleDemenyWestF5,
+  "CDW Level 11" = CoaleDemenyWestF11,
+  "CDW Level 15" = CoaleDemenyWestF15,
+  "CDW Level 17" = CoaleDemenyWestF17,
+  "CDW Level 21 (low mortality)" = CoaleDemenyWestF21
 )
-
-# =============================================================================
-# Core ABM: Simulate_Cemetery
-# From Model_Core_Simulate_Cemetery.R by Amy Anderson
-# =============================================================================
-
-Simulate_Cemetery <- function(cohort_size,
-                              lesion_formation_rate,
-                              formation_window_opens = 0,
-                              formation_window_closes,
-                              mortality_risk_type = "proportional",
-                              relative_mortality_risk = 1,
-                              mortality_regime) {
-  cohort <- data.frame(
-    agent_id = 1:cohort_size,
-    Age = 0,
-    Lesion = 0,
-    Dead = "No"
-  )
-
-  k <- 0
-  Alive_sum <- data.frame(
-    Age = integer(), Alive = integer(),
-    Lesion = integer(), Lesion_perc = numeric()
-  )
-
-  while (sum(cohort$Dead == "No") >= 10) {
-    k <- k + 1
-    Alive <- which(cohort$Dead == "No")
-    cohort$Age[Alive] <- k
-
-    age_based_risk <- (mortality_regime$a1 * exp(-mortality_regime$b1 * k) +
-      mortality_regime$a2 +
-      mortality_regime$a3 * exp(mortality_regime$b3 * k))
-
-    for (i in Alive) {
-      Stress <- runif(1)
-      cohort$Lesion[i] <- ifelse(
-        cohort$Age[i] >= formation_window_opens &
-          cohort$Age[i] <= formation_window_closes &
-          Stress <= lesion_formation_rate,
-        1, cohort$Lesion[i]
-      )
-
-      death_dice <- runif(1)
-
-      cohort$Dead[i] <- ifelse(
-        cohort$Lesion[i] == 0 & death_dice < age_based_risk, "Yes",
-        ifelse(cohort$Lesion[i] == 1 &
-          mortality_risk_type == "proportional" &
-          death_dice < age_based_risk * relative_mortality_risk, "Yes",
-        ifelse(cohort$Lesion[i] == 1 &
-          mortality_risk_type == "time_decreasing" &
-          death_dice < age_based_risk * relative_mortality_risk /
-            ((cohort$Age[i] / 10) + relative_mortality_risk), "Yes",
-        ifelse(cohort$Lesion[i] == 1 &
-          mortality_risk_type == "time_increasing" &
-          death_dice < age_based_risk *
-            ((cohort$Age[i] / 10) + relative_mortality_risk) /
-            relative_mortality_risk, "Yes",
-        cohort$Dead[i]))))
-    }
-
-    n_alive <- sum(cohort$Dead == "No" & cohort$Age == k)
-    n_lesion <- sum(cohort$Dead == "No" & cohort$Lesion == 1 & cohort$Age == k)
-    Alive_sum <- rbind(Alive_sum, data.frame(
-      Age = k, Alive = n_alive, Lesion = n_lesion,
-      Lesion_perc = ifelse(n_alive == 0, NA,
-        round(n_lesion / n_alive * 100, 1))
-    ))
-  }
-
-  k <- k + 1
-  Alive <- which(cohort$Dead == "No")
-  cohort$Age[Alive] <- k
-  cohort <- cohort %>% select(-Dead)
-
-  list(individual_outcomes = cohort, survivors = Alive_sum)
-}
 
 # =============================================================================
 # Helper: age intervals matching the paper
@@ -329,9 +233,9 @@ server <- function(input, output, session) {
     req(sim())
     sim()$individual_outcomes %>%
       mutate(
-        Age_Interval = assign_age_interval(Age),
+        Age_Interval = assign_age_interval(age),
         Lesion_Status = factor(
-          ifelse(Lesion == 1, "Present", "Absent"),
+          ifelse(lesion == 1, "Present", "Absent"),
           levels = c("Absent", "Present")
         )
       )
@@ -360,7 +264,7 @@ server <- function(input, output, session) {
     validate(need(sim(), ""))
     prev <- cemetery() %>%
       group_by(Age_Interval) %>%
-      summarise(Pct = sum(Lesion) / n() * 100, n = n(), .groups = "drop")
+      summarise(Pct = sum(lesion) / n() * 100, n = n(), .groups = "drop")
 
     ggplot(prev, aes(x = Age_Interval, y = Pct)) +
       geom_col(fill = col_lesion, alpha = 0.85, width = 0.8) +
@@ -378,14 +282,14 @@ server <- function(input, output, session) {
   output$cem_summary <- renderPrint({
     validate(need(sim(), ""))
     d <- sim()$individual_outcomes
-    with_les <- sum(d$Lesion == 1)
+    with_les <- sum(d$lesion == 1)
     cat(sprintf("Total individuals: %d\n", nrow(d)))
     cat(sprintf("With lesions: %d (%.1f%%)\n", with_les, with_les / nrow(d) * 100))
-    cat(sprintf("Mean age at death:  %.1f years (all)\n", mean(d$Age)))
+    cat(sprintf("Mean age at death:  %.1f years (all)\n", mean(d$age)))
     if (with_les > 0) {
-      cat(sprintf("                    %.1f years (with lesion)\n", mean(d$Age[d$Lesion == 1])))
+      cat(sprintf("                    %.1f years (with lesion)\n", mean(d$age[d$lesion == 1])))
     }
-    cat(sprintf("                    %.1f years (without lesion)\n", mean(d$Age[d$Lesion == 0])))
+    cat(sprintf("                    %.1f years (without lesion)\n", mean(d$age[d$lesion == 0])))
   })
 
   # =========================================================================
@@ -422,8 +326,8 @@ server <- function(input, output, session) {
 
   filtered <- reactive({
     req(sim())
-    d <- sim()$individual_outcomes %>% filter(Age >= input$min_age)
-    d$Dead <- 1
+    d <- sim()$individual_outcomes %>% filter(age >= input$min_age)
+    d$dead <- 1
     d
   })
 
@@ -431,10 +335,10 @@ server <- function(input, output, session) {
     validate(need(sim(), "Click 'Run Simulation' to begin."))
     d <- filtered()
     validate(need(nrow(d) > 10, "Too few individuals remain after filtering."))
-    validate(need(length(unique(d$Lesion)) == 2,
+    validate(need(length(unique(d$lesion)) == 2,
                   "All remaining individuals have the same lesion status."))
 
-    fit <- survfit(Surv(Age, Dead) ~ Lesion, data = d)
+    fit <- survfit(Surv(age, dead) ~ lesion, data = d)
     s <- summary(fit)
 
     surv_df <- data.frame(
@@ -468,9 +372,9 @@ server <- function(input, output, session) {
   output$logrank_text <- renderPrint({
     validate(need(sim(), ""))
     d <- filtered()
-    validate(need(length(unique(d$Lesion)) == 2, "Need both groups for comparison."))
+    validate(need(length(unique(d$lesion)) == 2, "Need both groups for comparison."))
 
-    test <- survdiff(Surv(Age, Dead) ~ Lesion, data = d)
+    test <- survdiff(Surv(age, dead) ~ lesion, data = d)
     p <- 1 - pchisq(test$chisq, df = length(test$n) - 1)
 
     cat(sprintf("Chi-squared: %.2f\n", test$chisq))
@@ -482,10 +386,10 @@ server <- function(input, output, session) {
   output$interpretation <- renderUI({
     req(sim())
     d <- filtered()
-    if (length(unique(d$Lesion)) < 2) return(NULL)
+    if (length(unique(d$lesion)) < 2) return(NULL)
 
     test <- tryCatch(
-      survdiff(Surv(Age, Dead) ~ Lesion, data = d),
+      survdiff(Surv(age, dead) ~ lesion, data = d),
       error = function(e) NULL
     )
     if (is.null(test)) return(NULL)

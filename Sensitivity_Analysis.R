@@ -18,107 +18,22 @@
 
 
 #### Load libraries ####
-library(here) # for setting the working directory relative to the project file.
-
-# packages for data wrangling
+library(persephone)
+library(here)
 library(tidyverse)
-library(dplyr)
-library(purrr) # for working with lists
-
-# packages for survival analysis
-library(survival)
-library(survminer)
-library(survRM2) # for calculating restricted mean survival time
-
-# packages for data visualization
-library(ggplot2)
 library(cowplot)
-
-# packages for handling model output
-library(jsonlite)
-library(data.table)
-
-
-
-
-# ---------------
-# 1. Set up parallel processing to reduce run time.
-# ---------------
+library(survminer)
 library(doParallel)
 library(foreach)
 
-# Detect available cores and register
-ncores <- parallel::detectCores() - 1  # leave one free
-cl <- makeCluster(ncores)
-registerDoParallel(cl)
+# Set up parallel processing
+ncores <- parallel::detectCores() - 1
+cl <- parallel::makeCluster(ncores)
+doParallel::registerDoParallel(cl)
 
 
-
-
-
-# ---------------
-#### MORTALITY REGIMES ####
-# 2. Define a series of Siler functions fit to Coale & Demeny West model life tables for females.
-# ---------------
-
-# Fast mortality
-CoaleDemenyWestF3 <- data.frame(
-  a1= 0.558,
-  b1= 1.05,
-  a2= 0.01225, 
-  a3= 0.000520, 
-  b3= 0.0727,
-  name="CoaleDemenyWestF3") 
-
-CoaleDemenyWestF5 <- data.frame(
-  a1= 0.457,
-  b1= 1.07,
-  a2= 0.01037, 
-  a3= 0.000359, 
-  b3= 0.0763,
-  name="CoaleDemenyWestF5") 
-
-CoaleDemenyWestF11 <- data.frame(
-  a1= 0.256,
-  b1= 1.17,
-  a2= 0.00596, 
-  a3= 0.000133, 
-  b3= 0.086,
-  name="CoaleDemenyWestF11") 
-
-CoaleDemenyWestF15 <- data.frame(
-  a1= 0.175,
-  b1= 1.40,
-  a2= 0.00368, 
-  a3= 0.000075, 
-  b3= 0.0917,
-  name="CoaleDemenyWestF15") 
-
-CoaleDemenyWestF17 <- data.frame(
-  a1= 0.14,
-  b1= 1.57,
-  a2= 0.00265, 
-  a3= 0.000056, 
-  b3= 0.0949,
-  name="CoaleDemenyWestF17") 
-
-# Slow mortality
-CoaleDemenyWestF21 <- data.frame(
-  a1= 0.091,
-  b1= 2.78,
-  a2= 0.00092, 
-  a3= 0.000025, 
-  b3= 0.1033,
-  name="CoaleDemenyWestF21") 
-
-
-
-#### Load Anderson's agent-based model ####
-source(here("Known Unknowns/Model_Core_Simulate_Cemetery.R")) # <- See this file for model details. 
-#### and functions for running and reading a model sweep ####
-source(here("Known Unknowns/Sweep_Utility_Functions.R"))
-#### and functions plotting results of model sweep ####
-source(here("Known Unknowns/Sweep_Plotting_Functions.R"))
+# Mortality regimes (CoaleDemenyWestF3, F5, F11, F15, F17, F21) and all
+# model/sweep/plotting functions are provided by the persephone package.
 
 
 
@@ -529,11 +444,11 @@ ggsave(filename = paste0(here("Known Unknowns", "Figures"), "/Figure_S8.pdf"),
 
 life_expectancies <- sweep_data %>%
   filter(rmr == 1) %>%
-  mutate(adult = if_else(Age > 15, 1, 0)) %>%
+  mutate(adult = if_else(age > 15, 1, 0)) %>%
   group_by(mortality) %>%
-  summarise(life_expectancy_at_birth = round(mean(Age), 1),
-            juvenile_mortality = round(sum(Age < 15) / n() * 100, 1),
-            adult_life_expectancy = round(mean(Age[adult == 1]))) 
+  summarise(life_expectancy_at_birth = round(mean(age), 1),
+            juvenile_mortality = round(sum(age < 15) / n() * 100, 1),
+            adult_life_expectancy = round(mean(age[adult == 1]))) 
 
 names(life_expectancies) <- c("Mortality regime", "Life expectancy at birth", "Juvenile mortality (%)", "Mean adult age at death")
 

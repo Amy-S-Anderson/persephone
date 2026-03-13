@@ -31,7 +31,7 @@ test_that("mortality module raises error when mortality_model is not 'usher3'", 
   dx <- 5
 
   expect_error(
-    apply_mortality(
+    apply_mortality_usher3(
       state = state,
       mortality_model = "gompertz",
       mortality_param = mortality_param,
@@ -41,7 +41,7 @@ test_that("mortality module raises error when mortality_model is not 'usher3'", 
   )
 
   expect_error(
-    apply_mortality(
+    apply_mortality_usher3(
       state = state,
       mortality_model = "siler",
       mortality_param = mortality_param,
@@ -51,7 +51,7 @@ test_that("mortality module raises error when mortality_model is not 'usher3'", 
   )
 
   expect_error(
-    apply_mortality(
+    apply_mortality_usher3(
       state = state,
       mortality_model = NULL,
       mortality_param = mortality_param,
@@ -70,7 +70,7 @@ test_that("mortality module executes successfully with usher3 model", {
   dx <- 5
 
   expect_no_error(
-    apply_mortality(
+    apply_mortality_usher3(
       state = state,
       mortality_model = "usher3",
       mortality_param = mortality_param,
@@ -84,7 +84,7 @@ test_that("mortality module returns a dataframe", {
   mortality_param <- mortality_param_test
   dx <- 5
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -103,7 +103,7 @@ test_that("output state contains same columns as input state", {
   mortality_param <- mortality_param_test
   dx <- 5
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -118,7 +118,7 @@ test_that("output state has same dimensions as input state", {
   mortality_param <- mortality_param_test
   dx <- 5
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -135,7 +135,7 @@ test_that("output state has expected column types", {
   mortality_param <- mortality_param_test
   dx <- 5
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -158,7 +158,7 @@ test_that("surviving agents have age incremented by dx", {
   mortality_param <- mortality_param_test
   dx <- 5
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -177,7 +177,7 @@ test_that("dead agents retain their original age", {
   mortality_param <- mortality_param_test
   dx <- 5
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -196,7 +196,7 @@ test_that("age increment works correctly with dx = 1", {
   mortality_param <- mortality_param_test
   dx <- 1
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -219,7 +219,7 @@ test_that("age increment works correctly with dx = 10", {
   mortality_param <- mortality_param_test
   dx <- 10
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -242,7 +242,7 @@ test_that("age increment works correctly with fractional dx", {
   mortality_param <- mortality_param_test
   dx <- 0.5
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -265,7 +265,7 @@ test_that("age increment works correctly with small dx values", {
   mortality_param <- mortality_param_test
   dx <- 0.1
 
-  result <- apply_mortality(
+  result <- apply_mortality_usher3(
     state = state,
     mortality_model = "usher3",
     mortality_param = mortality_param,
@@ -290,7 +290,7 @@ test_that("module works with multiple dx values", {
   dx_values <- c(1, 2, 5, 0.5, 10)
   
   for (dx in dx_values) {
-    result <- apply_mortality(
+    result <- apply_mortality_usher3(
       state = state,
       mortality_model = "usher3",
       mortality_param = mortality_param,
