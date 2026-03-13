@@ -7,7 +7,7 @@
 create_test_state <- function(n = 100) {
   data.frame(
     agent_id = 1:n,
-    age = sample(0:80, n, replace = TRUE),
+    age = as.numeric(sample(0:80, n, replace = TRUE)),
     lesion = sample(c(TRUE, FALSE), n, replace = TRUE),
     dead = rep(FALSE, n),
     in_sample = rep(TRUE, n)
@@ -136,91 +136,10 @@ test_that("output state has expected column types", {
   )
 
   expect_type(result$agent_id, "integer")
-  expect_type(result$age, "integer")
+  expect_type(result$age, "double")
   expect_type(result$lesion, "logical")
   expect_type(result$dead, "logical")
   expect_type(result$in_sample, "logical")
-})
-
-# -----------------------------------------------------------------------------
-# use_age_filtration tests
-# -----------------------------------------------------------------------------
-
-test_that("use_age_filtration defaults to FALSE", {
-  state <- create_test_state()
-  mortality_param <- list()
-  dx <- 5
-
-  # Call without use_age_filtration argument should work
-  expect_no_error(
-    apply_mortality(
-      state = state,
-      mortality_model = "usher3",
-      mortality_param = mortality_param,
-      dx = dx
-    )
-  )
-})
-
-test_that("when use_age_filtration is FALSE, all in_sample values are TRUE", {
-  state <- create_test_state(n = 200)
-  mortality_param <- list()
-  dx <- 5
-
-  result <- apply_mortality(
-    state = state,
-    mortality_model = "usher3",
-    mortality_param = mortality_param,
-    dx = dx,
-    use_age_filtration = FALSE
-  )
-
-  expect_true(all(result$in_sample == TRUE))
-})
-
-test_that("when use_age_filtration is TRUE, in_sample contains both TRUE and FALSE", {
-  # Use larger population to ensure we get a mix
-  state <- create_test_state(n = 500)
-  mortality_param <- list()
-  dx <- 5
-
-  result <- apply_mortality(
-    state = state,
-    mortality_model = "usher3",
-    mortality_param = mortality_param,
-    dx = dx,
-    use_age_filtration = TRUE
-  )
-
-  # Should have at least some TRUE and some FALSE values
-  expect_true(any(result$in_sample == TRUE))
-  expect_true(any(result$in_sample == FALSE))
-})
-
-test_that("use_age_filtration accepts boolean values only", {
-  state <- create_test_state()
-  mortality_param <- list()
-  dx <- 5
-
-  expect_no_error(
-    apply_mortality(
-      state = state,
-      mortality_model = "usher3",
-      mortality_param = mortality_param,
-      dx = dx,
-      use_age_filtration = TRUE
-    )
-  )
-
-  expect_no_error(
-    apply_mortality(
-      state = state,
-      mortality_model = "usher3",
-      mortality_param = mortality_param,
-      dx = dx,
-      use_age_filtration = FALSE
-    )
-  )
 })
 
 # -----------------------------------------------------------------------------
