@@ -168,14 +168,14 @@ ui <- fluidPage(
           fluidRow(
             column(12, plotOutput("plot_death_pmf", height = "400px"))
           ),
+          fluidRow(
+            column(12, plotOutput("plot_taph_siler_setup", height = "500px"))
+          ),
           conditionalPanel(
             condition = "input.age_error_exists == true",
             fluidRow(
               column(12, plotOutput("plot_age_error", height = "500px"))
             )
-          ),
-          fluidRow(
-            column(12, plotOutput("plot_taph_siler_setup", height = "500px"))
           )
         ),
 
