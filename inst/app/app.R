@@ -25,6 +25,13 @@ mortality_regimes <- list(
   "CDW Level 21 (low mortality)" = CoaleDemenyWestF21
 )
 
+taphonomy_regimes <- list(
+  "no_decay" = no_decay,
+  "weak_decay" = weak_decay,
+  "moderate_decay" = moderate_decay,
+  "strong_decay" = strong_decay
+)
+
 # =============================================================================
 # Helper: age intervals matching the paper
 # =============================================================================
@@ -115,27 +122,32 @@ ui <- fluidPage(
         value = 0,
         step = 1
       ),
-      sliderInput(
-        "remove_adults_older",
-        "Remove Adults older than age...",
-        min = 50,
-        max = 100,
-        value = 100,
-        step = 10
-      ),
+      # sliderInput(
+      #   "remove_adults_older",
+      #   "Remove Adults older than age...",
+      #   min = 50,
+      #   max = 100,
+      #   value = 100,
+      #   step = 10
+      # ),
 
       h4("Taphonomic Filter", class = "param-header"),
       selectInput(
         "taphonomic_filter",
         "Taphonomic strength",
-        choices = c("none", "weak", "moderate", "strong"),
-        selected = "None"
+        choices = c(
+          "No Preservation Loss" = "no_decay",
+          "Weak Preservation Loss" = "weak_decay",
+          "Moderate Preservation Loss" = "moderate_decay",
+          "Strong Preservation Loss" = "strong_decay"
+        ),
+        selected = "No Preservation Loss"
       ),
 
-      h4("Age Estimation Bias", class = "param-header"),
+      h4("Age Estimation Error", class = "param-header"),
       checkboxInput(
-        "age_bias_exists",
-        "Age Bias Exists",
+        "age_error_exists",
+        "Age Error Exists",
         value = FALSE
       ),
 
@@ -152,15 +164,71 @@ ui <- fluidPage(
         tabPanel("Set-up",
           br(),
           fluidRow(
-            column(12, plotOutput("plot_siler_setup", height = "500px"))
+            column(12, plotOutput("plot_mort_siler_setup", height = "500px"))
           ),
           fluidRow(
             column(12, plotOutput("plot_death_pmf", height = "400px"))
+          ),
+          fluidRow(
+            column(12, plotOutput("plot_taph_siler_setup", height = "500px"))
+          ),
+          conditionalPanel(
+            condition = "input.age_error_exists == true",
+            fluidRow(
+              column(12, plotOutput("plot_age_error", height = "500px"))
+            )
           )
         ),
 
+        tabPanel("Observed Sample",
+          br(),
 
-       tabPanel("True Population",
+          # fluidRow(
+          #   column(12, plotOutput("plot_alive_observed", height = "400px"))
+          # ),
+
+          # fluidRow(
+          #   column(12, plotOutput("plot_lesion_pct_observed", height = "400px"))
+          # ),
+
+          hr(),
+
+          fluidRow(
+            column(12, plotOutput("plot_cem_age_observed", height = "400px"))
+          ),
+
+          fluidRow(
+            column(12, plotOutput("plot_cem_lesion_observed", height = "400px"))
+          ),
+
+          hr(),
+          div(class = "summary-text", verbatimTextOutput("cem_summary_observed")),
+
+          hr(),
+
+          fluidRow(
+            column(8, plotOutput("plot_km_observed", height = "460px")),
+            column(4,
+              wellPanel(
+                h4("Age Filter", class = "param-header"),
+                sliderInput("min_age_observed", "Minimum estimated age to include", 0, 25, 0, 1),
+                div(class = "help-text",
+                  "Exclude individuals estimated to die within the lesion formation window."
+                )
+              ),
+              wellPanel(
+                h4("Log-Rank Test", class = "param-header"),
+                verbatimTextOutput("logrank_text_observed")
+              ),
+              uiOutput("interpretation_observed")
+            )
+          ),
+          fluidRow(
+            column(12, plotOutput("plot_true_vs_observed_age", height = "450px"))
+          )
+        ),
+
+        tabPanel("True Population",
           br(),
 
           fluidRow(
@@ -209,9 +277,6 @@ ui <- fluidPage(
           )
         ),
 
-        # =====================================================================
-        # Tab: Data
-        # =====================================================================
         tabPanel("Data",
           br(),
           fluidRow(
@@ -262,8 +327,9 @@ server <- function(input, output, session) {
         relative_mortality_risk = input$rmr,
         mortality_regime = mortality_regimes[[input$mortality_regime]],
         deposition_param = input$remove_children_below, # missing upper cutoff
+        taphonomy_regime = taphonomy_regimes[[input$taphonomic_filter]],
         loss_strength = input$taphonomic_filter,
-        age_noise = input$age_bias_exists
+        age_noise = input$age_error_exists
       )
       setProgress(1, message = "Done.")
     })
@@ -289,8 +355,28 @@ server <- function(input, output, session) {
       )
   })
 
+
+  cemetery_observed <- reactive({
+    req(sim())
+    sim()$individual_outcomes %>%
+      mutate(
+        Age_Interval = assign_age_interval(estimated_age),
+        Lesion_Status = factor(
+          ifelse(lesion == 1, "Present", "Absent"),
+          levels = c("Absent", "Present")
+        )
+      )
+  })
+
+  filtered_observed <- reactive({
+    req(sim())
+    d <- sim()$individual_outcomes %>% filter(estimated_age >= input$min_age_observed)
+    d$dead <- 1
+    d
+  })
+
   # =========================================================================
-  # Cemetery Tab
+  # Total Population Tab
   # =========================================================================
 
   output$plot_cem_age <- renderPlot({
@@ -340,10 +426,6 @@ server <- function(input, output, session) {
     cat(sprintf("                    %.1f years (without lesion)\n", mean(d$age[d$lesion == 0])))
   })
 
-  # =========================================================================
-  # Living Population Tab
-  # =========================================================================
-
   output$plot_alive <- renderPlot({
     validate(need(sim(), "Click 'Run Simulation' to begin."))
     ggplot(sim()$survivors, aes(x = Age, y = Alive)) +
@@ -367,10 +449,6 @@ server <- function(input, output, session) {
       theme(plot.title = element_text(hjust = 0.5, face = "bold")) +
       coord_cartesian(ylim = c(0, NA))
   })
-
-  # =========================================================================
-  # Survival Analysis Tab
-  # =========================================================================
 
   filtered <- reactive({
     req(sim())
@@ -483,6 +561,112 @@ server <- function(input, output, session) {
   })
 
   # =========================================================================
+  # Observed Sample Tab
+  # =========================================================================
+
+  # plot_alive_observed
+  
+  # plot_lesion_pct_observed
+
+  # plot_cem_age_observed
+
+  output$plot_cem_age_observed <- renderPlot({
+    validate(need(sim(), "Click 'Run Simulation' to begin."))
+    ggplot(cemetery_observed(), aes(x = Age_Interval, fill = Lesion_Status)) +
+      geom_bar(position = "stack", width = 0.8) +
+      scale_fill_manual(values = c("Absent" = col_no_lesion, "Present" = col_lesion)) +
+      labs(title = "Age-at-Death Distribution",
+           x = "Age at Death", y = "Count", fill = "lesion") +
+      theme_bw(base_size = 13) +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom"
+      )
+  })
+
+  # plot_cem_lesion_observed
+
+  output$plot_cem_lesion_observed <- renderPlot({
+    validate(need(sim(), ""))
+    prev <- cemetery_observed() %>%
+      group_by(Age_Interval) %>%
+      summarise(Pct = sum(lesion) / n() * 100, n = n(), .groups = "drop")
+
+    ggplot(prev, aes(x = Age_Interval, y = Pct)) +
+      geom_col(fill = col_lesion, alpha = 0.85, width = 0.8) +
+      geom_text(aes(label = paste0("n=", n)), vjust = -0.5, size = 3.2, color = "#555") +
+      labs(title = "Lesion Prevalence by Age Group",
+           x = "Age at Death", y = "% with Lesions") +
+      theme_bw(base_size = 13) +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5, face = "bold")
+      ) +
+      coord_cartesian(ylim = c(0, max(prev$Pct, na.rm = TRUE) * 1.15))
+  })
+
+  # cem_summary_observed
+
+  output$cem_summary_observed <- renderPrint({
+    validate(need(sim(), ""))
+    d <- sim()$individual_outcomes
+    d <- filter(d, in_sample)
+    with_les <- sum(d$lesion == 1)
+    cat(sprintf("Total individuals: %d\n", nrow(d)))
+    cat(sprintf("With lesions: %d (%.1f%%)\n", with_les, with_les / nrow(d) * 100))
+    cat(sprintf("Mean Age at death:  %.1f years (all)\n", mean(d$age)))
+    if (with_les > 0) {
+      cat(sprintf("                    %.1f years (with lesion)\n", mean(d$age[d$lesion == 1])))
+    }
+    cat(sprintf("                    %.1f years (without lesion)\n", mean(d$age[d$lesion == 0])))
+  })
+
+
+  # plot_km_observed
+
+  output$plot_km_observed <- renderPlot({
+    validate(need(sim(), "Click 'Run Simulation' to begin."))
+    d <- filtered()
+    d <- dplyr::filter(d, in_sample)
+    validate(need(nrow(d) > 10, "Too few individuals remain after filtering."))
+    validate(need(length(unique(d$lesion)) == 2,
+                  "All remaining individuals have the same lesion status."))
+
+    fit <- survfit(Surv(age, dead) ~ lesion, data = d)
+    s <- summary(fit)
+
+    surv_df <- data.frame(
+      time = s$time,
+      survival = s$surv,
+      group = ifelse(grepl("=0", as.character(s$strata)), "No Lesion", "Has Lesion")
+    )
+
+    # Add starting points so step curves begin at survival = 1
+    starts <- surv_df %>%
+      group_by(group) %>%
+      summarise(time = min(time) - 0.5, .groups = "drop") %>%
+      mutate(survival = 1.0, time = pmax(time, 0))
+    surv_df <- bind_rows(starts, surv_df) %>% arrange(group, time)
+
+    title <- "Kaplan-Meier Survival Curves"
+    if (input$min_age > 0) title <- paste0(title, "  (ages \u2265 ", input$min_age, ")")
+
+    ggplot(surv_df, aes(x = time, y = survival, color = group)) +
+      geom_step(linewidth = 1.1) +
+      scale_color_manual(values = c("No Lesion" = col_dark, "Has Lesion" = col_lesion)) +
+      labs(title = title, x = "Age (years)", y = "Survival Probability", color = "") +
+      theme_bw(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom",
+        legend.text = element_text(size = 12)
+      )
+  })
+
+
+
+  # =========================================================================
   # Data Tab
   # =========================================================================
 
@@ -520,103 +704,222 @@ server <- function(input, output, session) {
   # Set-up Tab
   # =========================================================================
 
-  output$plot_siler_setup <- renderPlot({
-  regime <- mortality_regimes[[input$mortality_regime]]
+  output$plot_mort_siler_setup <- renderPlot({
+  
+    regime <- mortality_regimes[[input$mortality_regime]]
 
-  age_max <- 100
+    age_max <- 100
 
-  siler_df <- data.frame(
-    age = 0:age_max
-  ) %>%
-    mutate(
-      Juvenile = regime$a1 * exp(-regime$b1 * age),
-      Background = regime$a2,
-      Senescent = regime$a3 * exp(regime$b3 * age),
-      Total = Juvenile + Background + Senescent
-    )
-
-  siler_df <- siler_df %>%
-    mutate(
-      Lesion_Modified = case_when(
-        input$risk_type == "proportional" ~
-          Total * input$rmr,
-
-        input$risk_type == "time_decreasing" ~
-          Total * input$rmr / ((age / 10) + input$rmr),
-
-        input$risk_type == "time_increasing" ~
-          Total * ((age / 10) + input$rmr) / input$rmr
+    mort_siler_df <- data.frame(
+      age = 0:age_max
+    ) %>%
+      mutate(
+        Juvenile = regime$a1 * exp(-regime$b1 * age),
+        Background = regime$a2,
+        Senescent = regime$a3 * exp(regime$b3 * age),
+        Total = Juvenile + Background + Senescent
       )
-    )
 
-  ggplot(siler_df, aes(x = age)) +
-    geom_line(aes(y = Total, color = "Baseline hazard"), linewidth = 1.2) +
-    geom_line(aes(y = Lesion_Modified, color = "Lesion-modified hazard"), linewidth = 1.2) +
-    scale_color_manual(
-      values = c(
-        "Baseline hazard" = col_dark,
-        "Lesion-modified hazard" = col_lesion
+    mort_siler_df <- mort_siler_df %>%
+      mutate(
+        Lesion_Modified = case_when(
+          input$risk_type == "proportional" ~
+            Total * input$rmr,
+
+          input$risk_type == "time_decreasing" ~
+            Total * input$rmr / ((age / 10) + input$rmr),
+
+          input$risk_type == "time_increasing" ~
+            Total * ((age / 10) + input$rmr) / input$rmr
+        )
       )
-    ) +
-    labs(
-      title = paste0("Mortality Hazards: ", input$mortality_regime),
-      x = "Age (years)",
-      y = "Annual mortality hazard",
-      color = NULL
-    ) +
-    theme_bw(base_size = 13) +
-    theme(
-      plot.title = element_text(hjust = 0.5, face = "bold"),
-      legend.position = "bottom"
-    )
+
+    ggplot(mort_siler_df, aes(x = age)) +
+      geom_line(aes(y = Total, color = "Baseline hazard"), linewidth = 1.2) +
+      geom_line(aes(y = Lesion_Modified, color = "Lesion-modified hazard"), linewidth = 1.2) +
+      scale_color_manual(
+        values = c(
+          "Baseline hazard" = col_dark,
+          "Lesion-modified hazard" = col_lesion
+        )
+      ) +
+      labs(
+        title = paste0("Mortality Hazards: ", input$mortality_regime),
+        x = "Age (years)",
+        y = "Annual mortality hazard",
+        color = NULL
+      ) +
+      theme_bw(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom"
+      )
   })
 
   output$plot_death_pmf <- renderPlot({
-  regime <- mortality_regimes[[input$mortality_regime]]
+    regime <- mortality_regimes[[input$mortality_regime]]
 
-  d_base <- make_discrete_death_distribution(
-    prob_fun = function(age) {
-      baseline_death_prob(age, regime)
-    },
-    age_max = 100
-  ) %>%
-    mutate(Group = "Baseline")
+    d_base <- make_discrete_death_distribution(
+      prob_fun = function(age) {
+        baseline_death_prob(age, regime)
+      },
+      age_max = 100
+    ) %>%
+      mutate(Group = "Baseline")
 
-  d_lesion <- make_discrete_death_distribution(
-    prob_fun = function(age) {
-      lesion_death_prob(
-        age = age,
-        regime = regime,
-        risk_type = input$risk_type,
-        rmr = input$rmr
+    d_lesion <- make_discrete_death_distribution(
+      prob_fun = function(age) {
+        lesion_death_prob(
+          age = age,
+          regime = regime,
+          risk_type = input$risk_type,
+          rmr = input$rmr
+        )
+      },
+      age_max = 100
+    ) %>%
+      mutate(Group = "Lesion-modified")
+
+    d_plot <- bind_rows(d_base, d_lesion)
+
+    ggplot(d_plot, aes(x = age, y = dx, fill = Group)) +
+      geom_col(position = "identity", alpha = 0.45) +
+      scale_fill_manual(values = c(
+        "Baseline" = col_dark,
+        "Lesion-modified" = col_lesion
+      )) +
+      labs(
+        title = paste0("Discrete Age-at-Death Distribution: ", input$mortality_regime),
+        x = "Age (years)",
+        y = "Probability of death at age x",
+        fill = NULL
+      ) +
+      theme_bw(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom"
       )
-    },
-    age_max = 100
-  ) %>%
-    mutate(Group = "Lesion-modified")
-
-  d_plot <- bind_rows(d_base, d_lesion)
-
-  ggplot(d_plot, aes(x = age, y = dx, fill = Group)) +
-    geom_col(position = "identity", alpha = 0.45) +
-    scale_fill_manual(values = c(
-      "Baseline" = col_dark,
-      "Lesion-modified" = col_lesion
-    )) +
-    labs(
-      title = paste0("Discrete Age-at-Death Distribution: ", input$mortality_regime),
-      x = "Age (years)",
-      y = "Probability of death at age x",
-      fill = NULL
-    ) +
-    theme_bw(base_size = 13) +
-    theme(
-      plot.title = element_text(hjust = 0.5, face = "bold"),
-      legend.position = "bottom"
-    )
   })
 
-}
+
+  output$plot_age_error <- renderPlot({
+
+    # hard coded for now
+    sd_per_year <- 0.1375
+    sd_at_20 <- 2
+    bias_start <- 60
+    bias_at_90 <- 25
+
+    cfact <- data.frame(
+      age = 0:100
+    )
+
+    cfact$error_sd <- case_when(
+      cfact$age <= 20 ~ cfact$age / 20 * sd_at_20,
+      cfact$age > 20 ~ sd_at_20 + (cfact$age - 20) * sd_per_year
+    )
+
+    bias_slope <- -(bias_at_90 / (90 - bias_start))
+
+    cfact$error_bias <- case_when(
+      cfact$age <= bias_start ~ 0,
+      cfact$age > bias_start ~ (cfact$age - bias_start) * bias_slope
+    )
+
+    cfact$q25 <- qnorm(0.25, cfact$error_bias, cfact$error_sd)
+    cfact$q75 <- qnorm(0.75, cfact$error_bias, cfact$error_sd)
+    cfact$q05 <- qnorm(0.05, cfact$error_bias, cfact$error_sd)
+    cfact$q95 <- qnorm(0.95, cfact$error_bias, cfact$error_sd)
+
+    plot(NULL, ylim = c(min(cfact$q05), max(cfact$q95)), xlim = c(0, 100),
+    xlab = "true age at death", ylab = "error in age estimation")
+    polygon(c(cfact$age, rev(cfact$age)), c(cfact$q05, rev(cfact$q95)), border = NA, col = "orange")
+    polygon(c(cfact$age, rev(cfact$age)), c(cfact$q25, rev(cfact$q75)), border = NA, col = "red")
+    abline(h = 0, lty = 2)
+    points(cfact$age, cfact$error_bias, type = "l")
+    abline(h = seq(-50, 50, by = 10), col = gray(0.3, 0.3))
+    abline(v = seq(0, 100, by = 10), col = gray(0.3, 0.3))
+
+  })
+
+  output$plot_taph_siler_setup <- renderPlot({
+
+    age_max <- 100
+
+    taph_siler_df <- bind_rows(
+      lapply(names(taphonomy_regimes), function(reg_name) {
+        regime <- taphonomy_regimes[[reg_name]]
+
+        data.frame(age = 0:age_max) %>%
+          mutate(
+            Juvenile = regime$a1 * exp(-regime$b1 * age),
+            Background = regime$a2,
+            Senescent = regime$a3 * exp(regime$b3 * age),
+            Total = Juvenile + Background + Senescent,
+            Regime = reg_name
+          )
+      })
+    )
+
+    ggplot(taph_siler_df, aes(x = age, y = Total, color = Regime)) +
+      geom_line(linewidth = 1.2) +
+      labs(
+        title = "Taphonomic Siler Hazards by Regime",
+        x = "Age (years)",
+        y = "Annual hazard of loss",
+        color = NULL
+      ) +
+      theme_bw(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom"
+      )
+  })
+
+  output$plot_true_vs_observed_age <- renderPlot({
+
+    validate(need(sim(), "Click 'Run Simulation' to begin."))
+
+    d <- sim()$individual_outcomes
+
+    validate(need("age" %in% names(d), "Column `age` missing"))
+    validate(need("estimated_age" %in% names(d), "Column `estimated_age` missing"))
+    validate(need("in_sample" %in% names(d), "Column `in_sample` missing"))
+
+    true_df <- d %>%
+      count(age) %>%
+      rename(plot_age = age, count = n) %>%
+      mutate(Source = "True age distribution")
+
+    observed_df <- d %>%
+      filter(in_sample) %>%
+      count(estimated_age) %>%
+      rename(plot_age = estimated_age, count = n) %>%
+      mutate(Source = "Observed sample (estimated age)")
+
+    plot_df <- bind_rows(true_df, observed_df)
+
+    ggplot(plot_df, aes(x = plot_age, y = count, fill = Source)) +
+      geom_col(position = "identity", alpha = 0.45, width = 0.9) +
+      scale_fill_manual(values = c(
+        "True age distribution" = col_dark,
+        "Observed sample (estimated age)" = col_lesion
+      )) +
+      labs(
+        title = "True vs Observed Age-at-Death Distributions",
+        x = "Age at death",
+        y = "Count",
+        fill = NULL
+      ) +
+      theme_bw(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom"
+      )
+
+  })
+
+} # end server() function
 
 # =============================================================================
 # Launch
