@@ -5,6 +5,7 @@
 # =============================================================================
 
 library(shiny)
+remotes::install_github('Amy-S-Anderson/persephone')
 library(persephone)
 library(ggplot2)
 library(dplyr)
@@ -137,7 +138,7 @@ ui <- fluidPage(
         "Age Bias Exists",
         value = FALSE
       ),
-      
+
       h4("Simulation", class = "param-header"),
       numericInput("seed", "Random seed (blank = random)", NA, min = 1),
       actionButton("run", "Run Simulation", class = "btn-primary run-btn")
@@ -183,7 +184,7 @@ ui <- fluidPage(
           hr(),
           div(class = "summary-text", verbatimTextOutput("cem_summary"))
         ),
-      
+
         # =====================================================================
         # Tab: Survival Analysis
         # =====================================================================

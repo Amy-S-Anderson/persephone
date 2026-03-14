@@ -4083,6 +4083,36 @@
         "Built": "R 4.4.0; ; 2024-04-06 09:14:59 UTC; unix"
       }
     },
+    "remotes": {
+      "Source": "CRAN",
+      "Repository": "https://cran.rstudio.com",
+      "description": {
+        "Package": "remotes",
+        "Title": "R Package Installation from Remote Repositories, Including\n'GitHub'",
+        "Version": "2.5.0",
+        "Authors@R": "c(\n    person(\"Gábor\", \"Csárdi\", , \"csardi.gabor@gmail.com\", role = c(\"aut\", \"cre\")),\n    person(\"Jim\", \"Hester\", role = \"aut\"),\n    person(\"Hadley\", \"Wickham\", role = \"aut\"),\n    person(\"Winston\", \"Chang\", role = \"aut\"),\n    person(\"Martin\", \"Morgan\", role = \"aut\"),\n    person(\"Dan\", \"Tenenbaum\", role = \"aut\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")),\n    person(\"Ascent Digital Services\", role = \"cph\")\n  )",
+        "Description": "Download and install R packages stored in 'GitHub', 'GitLab',\n    'Bitbucket', 'Bioconductor', or plain 'subversion' or 'git'\n    repositories.  This package provides the 'install_*' functions in\n    'devtools'. Indeed most of the code was copied over from 'devtools'.",
+        "License": "MIT + file LICENSE",
+        "URL": "https://remotes.r-lib.org, https://github.com/r-lib/remotes#readme",
+        "BugReports": "https://github.com/r-lib/remotes/issues",
+        "Depends": "R (>= 3.0.0)",
+        "Imports": "methods, stats, tools, utils",
+        "Suggests": "brew, callr, codetools, covr, curl, git2r (>= 0.23.0), knitr,\nmockery, pingr, pkgbuild (>= 1.0.1), rmarkdown, rprojroot,\ntestthat (>= 3.0.0), webfakes, withr",
+        "VignetteBuilder": "knitr",
+        "Config/Needs/website": "tidyverse/tidytemplate",
+        "Config/testthat/edition": "3",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.2.3",
+        "SystemRequirements": "Subversion for install_svn, git for install_git",
+        "NeedsCompilation": "no",
+        "Packaged": "2024-03-17 12:41:55 UTC; gaborcsardi",
+        "Author": "Gábor Csárdi [aut, cre],\n  Jim Hester [aut],\n  Hadley Wickham [aut],\n  Winston Chang [aut],\n  Martin Morgan [aut],\n  Dan Tenenbaum [aut],\n  Posit Software, PBC [cph, fnd],\n  Ascent Digital Services [cph]",
+        "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
+        "Repository": "CRAN",
+        "Date/Publication": "2024-03-17 13:20:02 UTC",
+        "Built": "R 4.4.0; ; 2024-04-05 15:19:54 UTC; unix"
+      }
+    },
     "reprex": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
@@ -5426,6 +5456,9 @@
     "man/apply_preservation.Rd": {
       "checksum": "1f1375b9b80f47ec669bc8a9f79cbf2a"
     },
+    "man/baseline_death_prob.Rd": {
+      "checksum": "f1300d3e4bad1f493e7b62a1ae7f4922"
+    },
     "man/CoaleDemenyWest.Rd": {
       "checksum": "18d01242eb324b1aa68826819fb8f5e3"
     },
@@ -5450,8 +5483,14 @@
     "man/get_default_params.Rd": {
       "checksum": "cea8f5c8e1b2515f859e91e8c68967ce"
     },
+    "man/lesion_death_prob.Rd": {
+      "checksum": "3ada8d8d4153b41b29cfb035991bd878"
+    },
     "man/lesions_to_percents.Rd": {
       "checksum": "d5c066092ea361045d8bc7bf5cce438c"
+    },
+    "man/make_discrete_death_distribution.Rd": {
+      "checksum": "5eedad9c3ac6f67439eddd057c584a9e"
     },
     "man/persephone-package.Rd": {
       "checksum": "69d06d2d7ae1b104da3e038e63fe93ab"
@@ -5496,7 +5535,7 @@
       "checksum": "cc616366cfb50c6b753158bea205b070"
     },
     "NAMESPACE": {
-      "checksum": "6eb597176490f7da14c5cdef7b064a60"
+      "checksum": "edff8561f4c7369869b066027450541a"
     },
     "R/assemblage-distribution.R": {
       "checksum": "f80bdad1bf8ec1e60a4a80bf4496e2dd"
@@ -5526,10 +5565,10 @@
       "checksum": "b2c6e76fceacd1b7826d209869127b77"
     },
     "R/siler_helper_functions.R": {
-      "checksum": "1356eb415d077dc3302a70d7afc6b9d6"
+      "checksum": "132ffb6e131802dc4ae2533ed78b712f"
     },
     "R/simulate.R": {
-      "checksum": "e3eabe57c716e8d592042026ea66e689"
+      "checksum": "cb9ea814d84b518f12b5bc50990bff64"
     },
     "R/survival.R": {
       "checksum": "18da08838697f9411dded85a25c80d47"
@@ -5538,7 +5577,7 @@
       "checksum": "ee2c856c7e6dbf5e0e7b0b36875648dd"
     },
     "README.md": {
-      "checksum": "033ae49bbd76a9751767054e02a33746"
+      "checksum": "0160d2ccb60590a073461578195b60c0"
     },
     "Sensitivity_Analysis.R": {
       "checksum": "483272a7dd921327871e6ca2db945a3f"
@@ -5546,22 +5585,22 @@
     "tests/testthat.R": {
       "checksum": "48a6b0d48a291a86b71fef8876bf6426"
     },
-    "tests/testthat/test-assemblage-distribution.R": {
-      "checksum": "96ae85dd03cc220599d7b4553721e4aa"
-    },
-    "tests/testthat/test-deposition.R": {
-      "checksum": "e8a3a6d4e45927dd1e4824c9395918b1"
-    },
-    "tests/testthat/test-estimation-error.R": {
-      "checksum": "7c539a3cf0300ce8b711f612dda660a8"
-    },
-    "tests/testthat/test-lesions.R": {
-      "checksum": "7ebd0310c19b2cbbbec87f1c08dd49ea"
-    },
     "tests/testthat/test-mortality.R": {
       "checksum": "0d5400d2cae96f992ded944e631603cd"
     },
-    "tests/testthat/test-preservation.R": {
+    "tests/testthat/unit/test-assemblage-distribution.R": {
+      "checksum": "96ae85dd03cc220599d7b4553721e4aa"
+    },
+    "tests/testthat/unit/test-deposition.R": {
+      "checksum": "e8a3a6d4e45927dd1e4824c9395918b1"
+    },
+    "tests/testthat/unit/test-estimation-error.R": {
+      "checksum": "7c539a3cf0300ce8b711f612dda660a8"
+    },
+    "tests/testthat/unit/test-lesions.R": {
+      "checksum": "7ebd0310c19b2cbbbec87f1c08dd49ea"
+    },
+    "tests/testthat/unit/test-preservation.R": {
       "checksum": "dde2acdb9e416f6373b51ade46d51717"
     },
     "vignettes/known-unknowns-replication.Rmd": {
