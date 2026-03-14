@@ -837,32 +837,29 @@ server <- function(input, output, session) {
 
   })
 
-
   output$plot_taph_siler_setup <- renderPlot({
-  
-    regime <- taphonomy_regimes[[input$taphonomic_filter]]
 
     age_max <- 100
 
-    taph_siler_df <- data.frame(
-      age = 0:age_max
-    ) %>%
-      mutate(
-        Juvenile = regime$a1 * exp(-regime$b1 * age),
-        Background = regime$a2,
-        Senescent = regime$a3 * exp(regime$b3 * age),
-        Total = Juvenile + Background + Senescent
-      )
+    taph_siler_df <- bind_rows(
+      lapply(names(taphonomy_regimes), function(reg_name) {
+        regime <- taphonomy_regimes[[reg_name]]
 
-    ggplot(taph_siler_df, aes(x = age)) +
-      geom_line(aes(y = Total, color = "Baseline hazard"), linewidth = 1.2) +
-      scale_color_manual(
-        values = c(
-          "Baseline hazard" = col_dark
-        )
-      ) +
+        data.frame(age = 0:age_max) %>%
+          mutate(
+            Juvenile = regime$a1 * exp(-regime$b1 * age),
+            Background = regime$a2,
+            Senescent = regime$a3 * exp(regime$b3 * age),
+            Total = Juvenile + Background + Senescent,
+            Regime = reg_name
+          )
+      })
+    )
+
+    ggplot(taph_siler_df, aes(x = age, y = Total, color = Regime)) +
+      geom_line(linewidth = 1.2) +
       labs(
-        title = paste0("Taphonomic Filter: ", input$loss_strength),
+        title = "Taphonomic Siler Hazards by Regime",
         x = "Age (years)",
         y = "Annual hazard of loss",
         color = NULL

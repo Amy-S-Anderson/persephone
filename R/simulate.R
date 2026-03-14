@@ -194,6 +194,7 @@ Simulate_Cemetery <- function(cohort_size,
 
   # Apply Deposition bias (if any)
   cohort <- apply_deposition(cohort, deposition_model = 'cutoff', deposition_param = deposition_param, dx = 1)
+  cohort$in_sample <- cohort$was_deposited
 
   # Apply Preservation bias (if any)
   if (loss_strength != 'no_decay') {
@@ -202,9 +203,10 @@ Simulate_Cemetery <- function(cohort_size,
     cohort <- apply_preservation(cohort, preservation_model = 'siler', preservation_param = b_siler, dx = 1)
   }
 
-  # Apply Age Misestimation (if any)
+  # Apply Age Mis-estimation (if any)
   if (age_noise) {
-    cohort <- apply_estimation_error(cohort, error_model =)
+    cohort <- apply_estimation_error(cohort)
+    cohort$estimated_age <- round(cohort$estimated_age)
   } else {
     cohort$estimated_age <- cohort$age
   }
