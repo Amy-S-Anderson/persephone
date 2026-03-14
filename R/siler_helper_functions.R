@@ -1,14 +1,25 @@
 
 
-
 # helper functions for siler models
 
+#' Compute baseline Siler death probability
+#' @param age Numeric. Age in years.
+#' @param regime Data frame with Siler parameters (a1, b1, a2, a3, b3).
+#' @return Numeric death probability.
+#' @export
 baseline_death_prob <- function(age, regime) {
   regime$a1 * exp(-regime$b1 * age) +
     regime$a2 +
     regime$a3 * exp(regime$b3 * age)
 }
 
+#' Compute lesion-modified Siler death probability
+#' @param age Numeric. Age in years.
+#' @param regime Data frame with Siler parameters (a1, b1, a2, a3, b3).
+#' @param risk_type Character. One of "proportional", "time_decreasing", "time_increasing".
+#' @param rmr Numeric. Relative mortality risk multiplier.
+#' @return Numeric death probability.
+#' @export
 lesion_death_prob <- function(age, regime, risk_type, rmr) {
   base <- baseline_death_prob(age, regime)
 
@@ -25,6 +36,11 @@ lesion_death_prob <- function(age, regime, risk_type, rmr) {
   out
 }
 
+#' Compute discrete age-at-death distribution from a probability function
+#' @param prob_fun Function taking age and returning death probability.
+#' @param age_max Integer. Maximum age to compute. Default 100.
+#' @return Data frame with columns age, qx, px, S_start, dx.
+#' @export
 make_discrete_death_distribution <- function(prob_fun, age_max = 100) {
   ages <- 1:age_max
   qx <- sapply(ages, prob_fun)

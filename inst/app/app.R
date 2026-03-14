@@ -5,6 +5,7 @@
 # =============================================================================
 
 library(shiny)
+remotes::install_github('Amy-S-Anderson/persephone')
 library(persephone)
 library(ggplot2)
 library(dplyr)
@@ -149,7 +150,7 @@ ui <- fluidPage(
         "Age Error Exists",
         value = FALSE
       ),
-      
+
       h4("Simulation", class = "param-header"),
       numericInput("seed", "Random seed (blank = random)", NA, min = 1),
       actionButton("run", "Run Simulation", class = "btn-primary run-btn")
@@ -249,10 +250,14 @@ ui <- fluidPage(
           ),
 
           hr(),
-          div(class = "summary-text", verbatimTextOutput("cem_summary")),
+          div(class = "summary-text", verbatimTextOutput("cem_summary"))
+        ),
 
-          hr(),
-
+        # =====================================================================
+        # Tab: Survival Analysis
+        # =====================================================================
+        tabPanel("Survival Analysis",
+          br(),
           fluidRow(
             column(8, plotOutput("plot_km", height = "460px")),
             column(4,

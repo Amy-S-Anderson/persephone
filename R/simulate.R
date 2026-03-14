@@ -203,13 +203,8 @@ Simulate_Cemetery <- function(cohort_size,
     cohort <- apply_preservation(cohort, preservation_model = 'siler', preservation_param = b_siler, dx = 1)
   }
 
-  # Apply Age Mis-estimation (if any)
-  if (age_noise) {
-    cohort <- apply_estimation_error(cohort)
-    cohort$estimated_age <- round(cohort$estimated_age)
-  } else {
-    cohort$estimated_age <- cohort$age
-  }
+  # Apply Age Misestimation (if any)
+  if(age_noise) cohort <- apply_estimation_error(cohort)
 
   # Remove internal columns before returning
   cohort <- cohort %>% dplyr::select(-"dead")
