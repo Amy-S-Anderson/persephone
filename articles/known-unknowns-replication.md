@@ -98,28 +98,28 @@ sim_survivors <- bind_rows(
 head(sim_data %>% filter(scenario == "Risk-free") %>% select(-Age_Interval), n = 10)
 ```
 
-    ##    agent_id age lesion in_sample rep relative_mortality_risk  scenario
-    ## 1         1  47      0      TRUE   1                       1 Risk-free
-    ## 2         2  65      1      TRUE   1                       1 Risk-free
-    ## 3         3  79      0      TRUE   1                       1 Risk-free
-    ## 4         4   1      0      TRUE   1                       1 Risk-free
-    ## 5         5  10      0      TRUE   1                       1 Risk-free
-    ## 6         6  38      1      TRUE   1                       1 Risk-free
-    ## 7         7  75      1      TRUE   1                       1 Risk-free
-    ## 8         8   7      0      TRUE   1                       1 Risk-free
-    ## 9         9   1      0      TRUE   1                       1 Risk-free
-    ## 10       10  68      1      TRUE   1                       1 Risk-free
-    ##               mortality relative_risk
-    ## 1  Coale Demeny West F5             1
-    ## 2  Coale Demeny West F5             1
-    ## 3  Coale Demeny West F5             1
-    ## 4  Coale Demeny West F5             1
-    ## 5  Coale Demeny West F5             1
-    ## 6  Coale Demeny West F5             1
-    ## 7  Coale Demeny West F5             1
-    ## 8  Coale Demeny West F5             1
-    ## 9  Coale Demeny West F5             1
-    ## 10 Coale Demeny West F5             1
+    ##    agent_id age lesion was_deposited in_sample rep relative_mortality_risk
+    ## 1         1  47      0          TRUE      TRUE   1                       1
+    ## 2         2  65      1          TRUE      TRUE   1                       1
+    ## 3         3  79      0          TRUE      TRUE   1                       1
+    ## 4         4   1      0          TRUE      TRUE   1                       1
+    ## 5         5  10      0          TRUE      TRUE   1                       1
+    ## 6         6  38      1          TRUE      TRUE   1                       1
+    ## 7         7  75      1          TRUE      TRUE   1                       1
+    ## 8         8   7      0          TRUE      TRUE   1                       1
+    ## 9         9   1      0          TRUE      TRUE   1                       1
+    ## 10       10  68      1          TRUE      TRUE   1                       1
+    ##     scenario            mortality relative_risk
+    ## 1  Risk-free Coale Demeny West F5             1
+    ## 2  Risk-free Coale Demeny West F5             1
+    ## 3  Risk-free Coale Demeny West F5             1
+    ## 4  Risk-free Coale Demeny West F5             1
+    ## 5  Risk-free Coale Demeny West F5             1
+    ## 6  Risk-free Coale Demeny West F5             1
+    ## 7  Risk-free Coale Demeny West F5             1
+    ## 8  Risk-free Coale Demeny West F5             1
+    ## 9  Risk-free Coale Demeny West F5             1
+    ## 10 Risk-free Coale Demeny West F5             1
 
 ### Preview: Scenario 2 (Risk-doubled)
 
@@ -127,28 +127,28 @@ head(sim_data %>% filter(scenario == "Risk-free") %>% select(-Age_Interval), n =
 head(sim_data %>% filter(scenario == "Risk-doubled") %>% select(-Age_Interval), n = 10)
 ```
 
-    ##    agent_id age lesion in_sample rep relative_mortality_risk     scenario
-    ## 1         1  28      1      TRUE   1                       2 Risk-doubled
-    ## 2         2   1      0      TRUE   1                       2 Risk-doubled
-    ## 3         3  10      0      TRUE   1                       2 Risk-doubled
-    ## 4         4   1      0      TRUE   1                       2 Risk-doubled
-    ## 5         5   5      1      TRUE   1                       2 Risk-doubled
-    ## 6         6  28      1      TRUE   1                       2 Risk-doubled
-    ## 7         7  30      1      TRUE   1                       2 Risk-doubled
-    ## 8         8  31      0      TRUE   1                       2 Risk-doubled
-    ## 9         9   1      0      TRUE   1                       2 Risk-doubled
-    ## 10       10  65      0      TRUE   1                       2 Risk-doubled
-    ##               mortality relative_risk
-    ## 1  Coale Demeny West F5             2
-    ## 2  Coale Demeny West F5             2
-    ## 3  Coale Demeny West F5             2
-    ## 4  Coale Demeny West F5             2
-    ## 5  Coale Demeny West F5             2
-    ## 6  Coale Demeny West F5             2
-    ## 7  Coale Demeny West F5             2
-    ## 8  Coale Demeny West F5             2
-    ## 9  Coale Demeny West F5             2
-    ## 10 Coale Demeny West F5             2
+    ##    agent_id age lesion was_deposited in_sample rep relative_mortality_risk
+    ## 1         1  28      1          TRUE      TRUE   1                       2
+    ## 2         2   1      0          TRUE      TRUE   1                       2
+    ## 3         3  10      0          TRUE      TRUE   1                       2
+    ## 4         4   1      0          TRUE      TRUE   1                       2
+    ## 5         5   5      1          TRUE      TRUE   1                       2
+    ## 6         6  28      1          TRUE      TRUE   1                       2
+    ## 7         7  30      1          TRUE      TRUE   1                       2
+    ## 8         8  31      0          TRUE      TRUE   1                       2
+    ## 9         9   1      0          TRUE      TRUE   1                       2
+    ## 10       10  65      0          TRUE      TRUE   1                       2
+    ##        scenario            mortality relative_risk
+    ## 1  Risk-doubled Coale Demeny West F5             2
+    ## 2  Risk-doubled Coale Demeny West F5             2
+    ## 3  Risk-doubled Coale Demeny West F5             2
+    ## 4  Risk-doubled Coale Demeny West F5             2
+    ## 5  Risk-doubled Coale Demeny West F5             2
+    ## 6  Risk-doubled Coale Demeny West F5             2
+    ## 7  Risk-doubled Coale Demeny West F5             2
+    ## 8  Risk-doubled Coale Demeny West F5             2
+    ## 9  Risk-doubled Coale Demeny West F5             2
+    ## 10 Risk-doubled Coale Demeny West F5             2
 
 ### Preview: Survivor data
 
