@@ -158,7 +158,8 @@ Simulate_Cemetery <- function(cohort_size,
                               relative_mortality_risk = 1,
                               mortality_regime,
                               deposition_param = 0,
-                              loss_strength = 'none',
+                              taphonomy_regime,
+                              loss_strength = 'no_decay',
                               age_noise = FALSE) {
   cohort <- create_cohort(cohort_size)
 
@@ -195,28 +196,24 @@ Simulate_Cemetery <- function(cohort_size,
   cohort <- apply_deposition(cohort, deposition_model = 'cutoff', deposition_param = deposition_param, dx = 1)
 
   # Apply Preservation bias (if any)
-  if (loss_strength == 'none') {
-  } else {
-    if (loss_strength == 'weak') {
-      a_siler <- c(0.175, 1.40, 0.00368, 0.000075, 0.0917)
-    } else if (loss_strength == 'moderate') {
-      a_siler <- c(0.175, 1.40, 0.00368, 0.000075, 0.0917)
-    } else if (loss_strength == 'strong') {
-      a_siler <- c(0.175, 1.40, 0.00368, 0.000075, 0.0917)
-    } else {
-      stop("invalid loss_strength")
-    }
+  if (loss_strength != 'no_decay') {
+    a_siler <- c(taphonomy_regime$a1, taphonomy_regime$b1, taphonomy_regime$a2, taphonomy_regime$a3, taphonomy_regime$b3)
     b_siler <- demohaz::trad_to_demohaz_siler_param(a_siler)
     cohort <- apply_preservation(cohort, preservation_model = 'siler', preservation_param = b_siler, dx = 1)
   }
 
   # Apply Age Misestimation (if any)
-  if(age_noise) cohort <- apply_estimation_error(cohort, error_model =)
+  if (age_noise) {
+    cohort <- apply_estimation_error(cohort, error_model =)
+  } else {
+    cohort$estimated_age <- cohort$age
+  }
 
   # Remove internal columns before returning
-  cohort <- cohort %>% dplyr::select(-"dead", -"was_deposited")
+  cohort <- cohort %>% dplyr::select(-"dead")
 
   # Model output
   output <- list(individual_outcomes = cohort, survivors = Alive_sum)
+
   return(output)
 }
