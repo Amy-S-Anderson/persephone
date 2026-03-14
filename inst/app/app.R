@@ -221,6 +221,9 @@ ui <- fluidPage(
               ),
               uiOutput("interpretation_observed")
             )
+          ),
+          fluidRow(
+            column(12, plotOutput("plot_true_vs_observed_age", height = "450px"))
           )
         ),
 
@@ -869,6 +872,49 @@ server <- function(input, output, session) {
         plot.title = element_text(hjust = 0.5, face = "bold"),
         legend.position = "bottom"
       )
+  })
+
+  output$plot_true_vs_observed_age <- renderPlot({
+
+    validate(need(sim(), "Click 'Run Simulation' to begin."))
+
+    d <- sim()$individual_outcomes
+
+    validate(need("age" %in% names(d), "Column `age` missing"))
+    validate(need("estimated_age" %in% names(d), "Column `estimated_age` missing"))
+    validate(need("in_sample" %in% names(d), "Column `in_sample` missing"))
+
+    true_df <- d %>%
+      count(age) %>%
+      rename(plot_age = age, count = n) %>%
+      mutate(Source = "True age distribution")
+
+    observed_df <- d %>%
+      filter(in_sample) %>%
+      count(estimated_age) %>%
+      rename(plot_age = estimated_age, count = n) %>%
+      mutate(Source = "Observed sample (estimated age)")
+
+    plot_df <- bind_rows(true_df, observed_df)
+
+    ggplot(plot_df, aes(x = plot_age, y = count, fill = Source)) +
+      geom_col(position = "identity", alpha = 0.45, width = 0.9) +
+      scale_fill_manual(values = c(
+        "True age distribution" = col_dark,
+        "Observed sample (estimated age)" = col_lesion
+      )) +
+      labs(
+        title = "True vs Observed Age-at-Death Distributions",
+        x = "Age at death",
+        y = "Count",
+        fill = NULL
+      ) +
+      theme_bw(base_size = 13) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "bottom"
+      )
+
   })
 
 } # end server() function
