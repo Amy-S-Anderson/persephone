@@ -1,44 +1,3 @@
-#' Helper functions for calculating mortality risk
-
-#'@title Siler hazard (helper)
-#'@description Compute Siler hazard for a given age. This helper function is referenced in apply_mortality(). 
-#'
-#' @param ages Integer vector, if population is age-structured
-#' @param mortality_regime Data frame with Siler parameters (a1, b1, a2, a3, b3)
-#' @return Numeric hazard value
-#' @keywords internal
-compute_siler_risk <- function(ages, mortality_regime) { 
-  if (any(mortality_regime < 0)) {
-    stop('No parameters of the mortality regime can be negative')
-  }
-  if(mortality_regime$a3 < 1){ # These are traditional Siler parameters
-    age_based_risk <- mortality_regime$a1 * exp(-mortality_regime$b1 * ages) +
-      mortality_regime$a2 +
-      mortality_regime$a3 * exp(mortality_regime$b3 * ages)
-  }
-  if(mortality_regime$a3 > 1){ # These are robust Siler parameters
-    mortality_regime <- demohaz_to_trad_siler_param(mortality_regime)
-    age_based_risk <- mortality_regime$a1 * exp(-mortality_regime$b1 * ages) +
-      mortality_regime$a2 +
-      mortality_regime$a3 * exp(mortality_regime$b3 * ages)
-  }
-  age_based_risk
-}
-
-
-#' @title Siler survivorship (helper)
-#' @description Compute discrete Siler survivorship l(x). Returns the probability of surviving from birth to each age x, under the Siler hazard model. l(0) is defined as 1 (everyone is alive at birth).
-#'
-#' @param ages Integer vector of ages (typically 0:max_age)
-#' @param mortality_regime Data frame with Siler parameters (a1, b1, a2, a3, b3)
-#' @return Numeric vector of survivorship values, same length as ages
-#' @keywords internal
-compute_siler_survivorship <- function(ages, mortality_regime) {
-  hazards        <- compute_siler_risk(ages, mortality_regime)
-  survival_probs <- 1 - hazards
-  cumprod(c(1, survival_probs[-length(survival_probs)]))
-}
-
 
 
 
@@ -105,7 +64,7 @@ apply_mortality <- function(pop,
                             force_death                 = FALSE,
                             risk_factors                = list(),
                             current_time,
-                            exposure_hazard_multiplier  = 1) {
+                            exposure_hazard_multiplier  = 1) { # If this argument isn't specified in the ABM loop, then it defaults to 1 (no multiplying effect of exposure)
   
   # updated acquired_frailty, if relevant:
   if ("acquired_frailty" %in% names(pop)) {
