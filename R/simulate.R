@@ -103,7 +103,11 @@ Simulate_Cemetery <- function(# Time arguments
                               age_noise = FALSE,
                               
                               # real-time update messages arguments
-                              yearly_updates = FALSE) {
+                              yearly_updates = FALSE,
+                              
+                              # specify which results to return
+                              return_m0_table = TRUE
+                              ) {
   
   # Check Input: return message if user chooses nonsensical combination of argument values.
   if (!is.null(lesion_formation_rate) && lesion_formation_window[2] == 0) {
@@ -143,19 +147,9 @@ Simulate_Cemetery <- function(# Time arguments
     asfr <- compute_trapezoid_asfr(ages = 0:100, tfr = tfr)
   }
 
-  # Calculate age-specific mortality hazards across individual frailty values by 'defrailing' the Siler function, which gives average mortality hazard at each age. 
-  mu0_table <- if (!is.null(pop_config$frailty_variance) && pop_config$frailty_variance > 0) {
-    # If there is variance in assigned frailty values at birth, defrail the Siler values.
-    defrail_siler(mortality_regime = mortality_regime,
-                  frailty_variance  = pop_config$frailty_variance)
-  } else {
-    # Otherwise, use the Siler function directly to calculate age-based mortality hazards for ages 0 to 110. 
-    ages <- 0:110
-    data.frame(
-      age = ages,
-      mu0 = compute_siler_risk(ages, mortality_regime)
-    )
-  }
+  # Calculate age-specific mortality hazards across individual frailty values, incorporating variation in individual frailty values, if present. 
+  mu0_table <- defrail_siler(mortality_regime  = mortality_regime,
+                             frailty_variance  = pop_config$frailty_variance)
   # Add a column to the age-based hazards lookup table detailing the proportion of deaths at each age due to trauma.
   # This column incorporates life history differences in relative risk of dying from illness/natural causes vs. accidental/traumatic causes
   mu0_table <- build_p_trauma_lookup(mu0_lookup = mu0_table, control_points = trauma_regime)
@@ -333,8 +327,15 @@ Simulate_Cemetery <- function(# Time arguments
   # Output:
   # 1. individual_outcomes, a simulated bioarchaeological data set 
   # 2. annual_census, the yearly record of number of living individuals
-  output <- list(individual_outcomes = decedents, 
-                 annual_census = annual_census)
+  # 3. mu0_table, the annual hazards of dying. 
+  if(return_mu0_table){
+    output <- list(individual_outcomes = decedents, 
+                   annual_census = annual_census,
+                   mu0_table = mu0_table)
+  } else {
+    output <- list(individual_outcomes = decedents, 
+                   annual_census = annual_census)
+  }
   
   return(output)
 }
