@@ -1,24 +1,4 @@
 
-
-
-#'@title Update acquired frailty
-#'@description Compute new acquired frailty as a function of exposure to stress.
-#'
-#' @param ages Integer vector, if population is age-structured
-#' @param mortality_regime Data frame with Siler parameters (a1, b1, a2, a3, b3)
-#' @return Numeric hazard value
-#' @keywords internal
-#' 
-
-acquire_frailty <- function(pop, exposure_hazard_multiplier){
-  newly_acquired_frailty <- ifelse(pop$exposed_this_step, exposure_hazard_multiplier, NA_real_)
-  old_acquired_frailty <- pop$acquired_frailty
-  updated_frailty <- ifelse()
-  
-  pop$acquired_frailty <- updated_frailty
-}
-
-
 #' Update acquired_frailty for one time step of exposure
 #'
 #' Computes this step's newly acquired frailty (if the agent was exposed
