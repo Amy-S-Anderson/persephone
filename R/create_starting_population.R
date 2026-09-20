@@ -21,7 +21,7 @@ create_pop <- function(pop0_size, age_structured,
                        r = 0, mortality_regime = NULL) { # mortality regime must be specified if age_structured = TRUE
   if(age_structured == TRUE){
     if(is.null(mortality_regime)){
-      print("You need to specify a mortality regime in order to generate an age-structured population. Check your function arguments. Does mortality_regime = NULL?")
+      stop("You need to specify a mortality regime in order to generate an age-structured population. Check your function arguments. Does mortality_regime = NULL?")
     }
     pop0 <- create_pop_stable_age(pop0_size = pop0_size,
                                   mortality_regime = mortality_regime,
@@ -41,11 +41,8 @@ create_pop <- function(pop0_size, age_structured,
       relocate(lesion, .after = age) # change position of lesion column so it sits to the right of 'age'
   }
 
-  # If frailty has a numeric value, initialize an 'acquired_frailty' column and a gamma distribution of
-  # frailty values in a 'frailty' column. 
+  # If frailty has a numeric value, initialize a gamma distribution of frailty values in a 'frailty' column. 
   if(!is.null(pop_config$frailty_variance)){
-    pop0$acquired_frailty <- NA_real_
-    
     if (pop_config$frailty_variance == 0){
       # if frailty_variance = 0 or is set to NULL, everyone has a frailty value of 1.
       pop0$frailty <- 1 
@@ -55,8 +52,13 @@ create_pop <- function(pop0_size, age_structured,
                              scale = pop_config$frailty_variance)    }
   }
 
+  # If stress exposure is included in the model, track the number of stress events and the acquired frailty for every individual
   if (!is.null(pop_config$annual_exposure) || !is.null(pop_config$lesion_formation_rate)) {
+    # To be honest, I'm not sure if these should be tied to lesion_formation rate. It's a clunky way of doing the calculation, 
+    # since in that case, n_stress_events will only ever be 1. 
     pop0$n_stress_events <- 0L
+    pop0$acquired_frailty <- NA_real_
+    
   }
   return(pop0)
 }
