@@ -45,15 +45,12 @@
 #'   proportional hazard, set the value to NULL. For binary (0/1) columns
 #'   (e.g. lesion), supply the proportional hazard as a numeric scalar
 #'   (e.g. list(lesion = 2.1)).
-#' @param exposure_hazard_multiplier Numeric. The multiplier applied to
-#'   exposed agents when the exposure hazard is transient.
 #'
 #' @return Numeric vector, length \code{nrow(pop)}, giving the combined
 #'   hazard multiplier for each agent.
 #' @keywords internal
 compute_hazard_multiplier <- function(pop,
-                                      risk_factors               = list(),
-                                      exposure_hazard_multiplier = 1) {
+                                      risk_factors = list()) {
   
   hazard_multiplier <- rep(1, nrow(pop))
   
