@@ -145,7 +145,7 @@ Simulate_Cemetery <- function(# Time arguments
   # Calculate age-specific mortality hazards across individual frailty values by 'defrailing' the Siler function, which gives average mortality hazard at each age. 
   mu0_table <- if (!is.null(pop_config$frailty_variance) && pop_config$frailty_variance > 0) {
     # If there is variance in assigned frailty values at birth, defrail the Siler values.
-    defrail_siler(mortality_regime = params$mortality_regime,
+    defrail_siler(mortality_regime = mortality_regime,
                   frailty_variance  = pop_config$frailty_variance)
   } else {
     # Otherwise, use the Siler function directly to calculate age-based mortality hazards for ages 0 to 110. 
@@ -181,7 +181,7 @@ Simulate_Cemetery <- function(# Time arguments
     # if <=10 people are alive, they will all die this time step. This truncation decision is based on the poor precision/accuracy of skeletal age-at-death estimates at old ages, and to prevent a stochastic model from producing an age outlier; bioarchaeologically we wouldn't be able to see Methuselah.
     force_death <- nrow(pop) <= 10  
     
-    if(hazard_is_transient && "acquired_frailty" %in% names(pop)){ ### is this the right way to do a dual if statement? Maybe check your book on R code for if conditionals. 
+    if(hazard_is_transient && "acquired_frailty" %in% names(pop)){ 
       # re-set the value for acquired frailty back to baseline if hazard is transient. 
       pop$acquired_frailty <- NA_real_
     }
