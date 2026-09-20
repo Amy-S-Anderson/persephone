@@ -124,7 +124,8 @@ Simulate_Cemetery <- function(# Time arguments
   pop_config <- list(
     model_lesions              = model_lesions,
     annual_exposure            = annual_exposure,
-    lesion_formation_window.   = lesion_formation_window,
+    lesion_formation_rate      = lesion_formation_rate,
+    lesion_formation_window    = lesion_formation_window,
     frailty_variance           = gammafrailty_variance
   )
   
